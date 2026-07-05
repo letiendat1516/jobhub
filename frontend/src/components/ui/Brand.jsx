@@ -9,13 +9,13 @@ import logo from '../../assets/logo.svg';
  *   trắng để dùng trên nền tối.
  * @param {string} [href] - link target (mặc định về trang chủ).
  * @param {string} [className] - override hoàn toàn size (vd: 'h-14 w-14').
- *   Khi truyền className, default 'h-9 w-9' sẽ bị bỏ qua để tránh xung đột.
+ *   Khi truyền className, default 'h-[100px] w-[100px]' sẽ bị bỏ qua.
  */
 export default function Brand({ variant = 'dark', href = '/', className }) {
   const colorClass = variant === 'light' ? 'brightness-0 invert' : '';
 
-  // Nếu caller truyền className (chứa size), dùng nó; không thì default h-9 w-9.
-  const sizeClass = className ?? 'h-9 w-9';
+  // Mặc định logo luôn 100x100 ở mọi nơi; caller có thể override qua className.
+  const sizeClass = className ?? 'h-[100px] w-[100px]';
 
   const content = <img src={logo} alt="JobHub" className={cn('shrink-0', sizeClass, colorClass)} />;
 

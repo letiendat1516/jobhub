@@ -55,7 +55,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 gap-10 md:grid-cols-3 lg:grid-cols-6">
           {/* Brand block */}
           <div className="col-span-2">
-            <Brand className="h-10 w-10" />
+            <Brand />
             <p className="mt-4 max-w-xs text-sm leading-7 text-ink-soft">
               JobHub — nền tảng tuyển dụng thông minh ứng dụng AI, kết nối ứng viên với doanh nghiệp
               thông qua việc làm phù hợp nhất.

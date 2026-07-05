@@ -37,7 +37,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="absolute -bottom-24 -left-24 h-72 w-72 rounded-full bg-white/5" />
 
         <Link to="/" className="relative z-10 inline-flex">
-          <Brand variant="light" href={null} className="h-12 w-12" />
+          <Brand variant="light" href={null} />
         </Link>
 
         <div className="relative z-10">
@@ -74,7 +74,7 @@ export default function AuthShell({ title, subtitle, children, footer }) {
         <div className="w-full max-w-md">
           {/* Brand trên mobile (lg:hidden vì mobile không hiện aside) */}
           <div className="mb-8 flex justify-center lg:hidden">
-            <Brand className="h-14 w-14" />
+            <Brand />
           </div>
 
           <header className="mb-8">
