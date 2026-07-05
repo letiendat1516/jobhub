@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build / cache
+dist/
+build/
+coverage/
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+npm-debug.log*
+
+# Pino logs
+logs/

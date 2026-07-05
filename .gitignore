@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+build/
+.vite/
+coverage/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Credentials / secrets
+docs/account.md
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
