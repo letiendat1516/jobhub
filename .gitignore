@@ -15,6 +15,10 @@ coverage/
 # Credentials / secrets
 docs/account.md
 
+# AI Lab runtime logs (lưu CV/prompt/response, có thể to & nhạy cảm)
+# Giữ .gitkeep để folder tồn tại; commit prompts/examples/analysis separately
+ai-lab/logs/*.json
+
 # Logs
 *.log
 npm-debug.log*
@@ -24,3 +28,8 @@ npm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Crawler output (regenerable, large)
+frontend/src/data/jobsCrawled.json
+scripts/crawl-topcv/data/
+scripts/crawl-topcv/node_modules/

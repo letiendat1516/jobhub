@@ -9,7 +9,7 @@ import { useScrolled } from '../../hooks/index.js';
 import { useAuth } from '../../context/AuthContext.jsx';
 
 const navLinks = [
-  { label: 'Việc làm', to: '/#featured-jobs' },
+  { label: 'Việc làm', to: '/viec-lam' },
   { label: 'Công ty', to: '/#top-companies' },
   { label: 'Hồ sơ & AI', to: '/#ai-analysis' },
   { label: 'Cẩm nang nghề nghiệp', to: '/#career-resources' },

@@ -16,6 +16,7 @@ import BlogCard from '../components/blog/BlogCard.jsx';
 import CtaBand from '../components/section/CtaBand.jsx';
 
 import { featuredJobs } from '../data/jobs.js';
+import { mockJobs } from '../data/jobsList.js';
 import { topCompanies } from '../data/companies.js';
 import { features } from '../data/features.js';
 import { testimonials } from '../data/testimonials.js';
@@ -29,6 +30,35 @@ const categories = [
   'Tài chính – Kế toán',
   'Nhân sự',
 ];
+
+/**
+ * Pick featured jobs from the real job pool (jobsList.js).
+ * Strategy: prefer "hot" jobs (high salary), but ensure category diversity
+ * so the homepage doesn't show 6 jobs from the same industry. Falls back to
+ * the static sample if the pool is empty.
+ */
+function pickFeaturedJobs(pool, count = 6) {
+  if (!pool || pool.length === 0) return featuredJobs;
+  // Sort by hot first, then by salary descending
+  const ranked = [...pool].sort(
+    (a, b) => (b.hot ? 1 : 0) - (a.hot ? 1 : 0) || (b.salaryMax ?? 0) - (a.salaryMax ?? 0),
+  );
+  // Pick one job per category until we have `count` jobs
+  const seen = new Set();
+  const picked = [];
+  for (const j of ranked) {
+    if (seen.has(j.category)) continue;
+    seen.add(j.category);
+    picked.push(j);
+    if (picked.length >= count) break;
+  }
+  // If not enough diverse, top up with the next best
+  for (const j of ranked) {
+    if (picked.length >= count) break;
+    if (!picked.includes(j)) picked.push(j);
+  }
+  return picked.slice(0, count);
+}
 
 /**
  * HomePage — single landing page (docs/06_HOMEPAGE_SPEC.md).
@@ -49,10 +79,7 @@ export default function HomePage() {
             title="Cơ hội việc làm hàng đầu dành cho bạn"
             description="Những vị trí đang được tuyển dụng gấp, được AI đánh giá phù hợp với nhiều nhóm kỹ năng khác nhau."
           />
-          <Link
-            to="/#featured-jobs"
-            className="btn-secondary shrink-0"
-          >
+          <Link to="/viec-lam" className="btn-secondary shrink-0">
             Xem tất cả việc làm
             <Icon name="arrowRight" size={18} />
           </Link>
@@ -78,7 +105,7 @@ export default function HomePage() {
         </Reveal>
 
         <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {featuredJobs.map((job, index) => (
+          {pickFeaturedJobs(mockJobs).map((job, index) => (
             <Reveal key={job.id} delay={index * 0.05}>
               <JobCard job={job} />
             </Reveal>

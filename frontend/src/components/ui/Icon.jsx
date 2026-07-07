@@ -8,7 +8,12 @@
  * @param {'stroke'|'fill'} [variant='stroke']
  */
 const paths = {
-  search: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.6-3.6" /></>,
+  search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.6-3.6" />
+    </>
+  ),
   mapPin: (
     <>
       <path d="M12 21s-6.5-5.4-6.5-10.2A6.5 6.5 0 0 1 18.5 10.8C18.5 15.6 12 21 12 21Z" />
@@ -34,6 +39,12 @@ const paths = {
     <>
       <path d="M5 12h14" />
       <path d="m13 6 6 6-6 6" />
+    </>
+  ),
+  arrowLeft: (
+    <>
+      <path d="M19 12H5" />
+      <path d="m11 6-6 6 6 6" />
     </>
   ),
   arrowUpRight: (
@@ -118,6 +129,14 @@ const paths = {
     </>
   ),
   chevronDown: <path d="m6 9 6 6 6-6" />,
+  filter: <path d="M3 5h18l-7 8v6l-4-2v-4L3 5Z" />,
+  calendar: (
+    <>
+      <rect x="3.5" y="5" width="17" height="16" rx="2.5" />
+      <path d="M3.5 9.5h17M8 3v4M16 3v4" />
+    </>
+  ),
+  x: <path d="M6 6 18 18M18 6 6 18" />,
   menu: <path d="M4 7h16M4 12h16M4 17h16" />,
   close: <path d="M6 6 18 18M18 6 6 18" />,
   target: (
@@ -163,7 +182,9 @@ const paths = {
       <path d="M8 10.5V16M8 7.6v.01M11.5 16v-3a2 2 0 0 1 4 0v3M11.5 16v-5.5" />
     </>
   ),
-  facebook: <path d="M13.5 21v-7h2.3l.5-3h-2.8V9c0-.9.3-1.5 1.6-1.5H17V4.8c-.3 0-1.3-.1-2.4-.1-2.4 0-4.1 1.5-4.1 4.2V11H8v3h2.5v7h3Z" />,
+  facebook: (
+    <path d="M13.5 21v-7h2.3l.5-3h-2.8V9c0-.9.3-1.5 1.6-1.5H17V4.8c-.3 0-1.3-.1-2.4-.1-2.4 0-4.1 1.5-4.1 4.2V11H8v3h2.5v7h3Z" />
+  ),
   youtube: (
     <>
       <rect x="3" y="6" width="18" height="12" rx="3.5" />

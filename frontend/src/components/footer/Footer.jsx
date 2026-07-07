@@ -17,7 +17,7 @@ const groups = [
   {
     title: 'Sản phẩm',
     links: [
-      { label: 'Tìm việc làm', to: '/#featured-jobs' },
+      { label: 'Tìm việc làm', to: '/viec-lam' },
       { label: 'Hồ sơ & CV', to: '/#ai-analysis' },
       { label: 'Dành cho doanh nghiệp', to: '/dang-ky' },
       { label: 'Gợi ý việc làm AI', to: '/#ai-analysis' },

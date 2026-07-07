@@ -3,10 +3,11 @@ import { Routes, Route } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout.jsx';
 import HashScroll from './HashScroll.jsx';
 import HomePage from '../pages/HomePage.jsx';
+import JobsPage from '../pages/JobsPage.jsx';
+import JobDetailPage from '../pages/JobDetailPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import RegisterEmployerPage from '../pages/RegisterEmployerPage.jsx';
-import PlaceholderPage from '../pages/PlaceholderPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 
 /**
@@ -29,16 +30,8 @@ export default function AppRoutes() {
         {/* Public pages — có Navbar + Footer chung */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
-          <Route
-            path="/viec-lam"
-            element={
-              <PlaceholderPage
-                eyebrow="Khám phá cơ hội"
-                title="Việc làm"
-                description="Trang danh sách việc làm sẽ được triển khai ở giai đoạn tiếp theo."
-              />
-            }
-          />
+          <Route path="/viec-lam" element={<JobsPage />} />
+          <Route path="/viec-lam/:id" element={<JobDetailPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

@@ -51,7 +51,7 @@ export default function Hero() {
               <Icon name="upload" size={18} />
               Tải CV của bạn
             </Link>
-            <Link to="/#featured-jobs" className="btn-secondary">
+            <Link to="/viec-lam" className="btn-secondary">
               Khám phá việc làm
               <Icon name="arrowRight" size={18} />
             </Link>

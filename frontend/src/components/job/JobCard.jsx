@@ -17,15 +17,23 @@ export default function JobCard({ job }) {
       {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-center gap-3">
-          <span
-            className={cn(
-              'grid h-12 w-12 shrink-0 place-items-center rounded-xl text-sm font-bold',
-              job.company.brand,
-            )}
-            aria-hidden
-          >
-            {job.company.initials}
-          </span>
+          {job.companyLogo ? (
+            <img
+              src={job.companyLogo}
+              alt={job.company.name}
+              className="h-12 w-12 shrink-0 rounded-xl object-contain"
+            />
+          ) : (
+            <span
+              className={cn(
+                'grid h-12 w-12 shrink-0 place-items-center rounded-xl text-sm font-bold',
+                job.company.brand,
+              )}
+              aria-hidden
+            >
+              {job.company.initials}
+            </span>
+          )}
           <div className="min-w-0">
             <h3 className="truncate text-base font-bold text-ink group-hover:text-primary">
               {job.title}
@@ -51,7 +59,7 @@ export default function JobCard({ job }) {
         </div>
         <div className="flex items-center gap-2">
           <Icon name="briefcase" size={16} className="text-primary" />
-          <dd>{job.experience}</dd>
+          <dd>{job.experience || job.experienceLabel}</dd>
         </div>
         <div className="flex items-center gap-2">
           <Icon name="clock" size={16} className="text-primary" />
@@ -85,7 +93,11 @@ export default function JobCard({ job }) {
                 : 'border-slate-200 text-ink-soft hover:border-primary hover:text-primary',
             )}
           >
-            <Icon name={saved ? 'bookmarkFill' : 'bookmark'} size={18} variant={saved ? 'fill' : 'stroke'} />
+            <Icon
+              name={saved ? 'bookmarkFill' : 'bookmark'}
+              size={18}
+              variant={saved ? 'fill' : 'stroke'}
+            />
           </button>
           <button type="button" className="btn-primary px-4 py-2 text-xs">
             Ứng tuyển
