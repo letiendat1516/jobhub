@@ -54,6 +54,10 @@ class ApiError extends Error {
   static internal(message = 'Lỗi hệ thống. Vui lòng thử lại sau.') {
     return new ApiError(500, message);
   }
+
+  static badGateway(message = 'Dịch vụ bên ngoài gặp lỗi.') {
+    return new ApiError(502, message);
+  }
 }
 
 export default ApiError;

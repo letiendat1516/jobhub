@@ -72,19 +72,37 @@ export async function logAiCall({
     metadata: metadata ?? {},
   };
 
+  // Sanitize: PostgreSQL không chấp nhận \u0000 (null byte) trong text
+  const sanitize = (str) => (str || '').replace(/\u0000/g, '').replace(/\0/g, '');
+  const cleanPrompt = sanitize(prompt);
+  const cleanResponse = sanitize(response);
+
   // 1. Ghi DB (bảng ai_matching_log) — best effort, không block nếu fail.
   try {
     const client = getSupabaseClient();
     if (client) {
       const { error: dbErr } = await client.from('ai_matching_log').insert({
         job_seeker_id: metadata?.job_seeker_id ?? null,
-        prompt_text: prompt,
-        response_text: response,
+        prompt_text: cleanPrompt,
+        response_text: cleanResponse,
         model_name: model,
         total_jobs_sent: metadata?.total_jobs_sent ?? null,
         processing_time_ms: processingTimeMs,
+        task: task ?? null,
+        tokens_in: tokensIn ?? 0,
+        tokens_out: tokensOut ?? 0,
+        success: success ?? true,
+        error: sanitize(error) || null,
       });
-      if (dbErr) logger.warn({ err: dbErr }, 'ai_matching_log insert failed');
+      if (dbErr) {
+        logger.error(
+          { err: dbErr, task, code: dbErr.code },
+          '❌ ai_matching_log DB insert FAILED — check if Migration 002 was run (DROP NOT NULL on job_seeker_id)',
+        );
+        console.warn('[aiLogger] DB insert failed:', dbErr.message, '(code:', dbErr.code + ')');
+      } else {
+        logger.info({ task }, '✓ ai_matching_log DB insert OK');
+      }
     }
   } catch (e) {
     logger.warn({ err: e }, 'Supabase log failed (ignored)');

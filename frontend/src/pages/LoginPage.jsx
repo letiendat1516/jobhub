@@ -19,7 +19,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const passwordField = usePasswordField();
 
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '', rememberMe: true });
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState(null);
 
@@ -55,10 +55,7 @@ export default function LoginPage() {
       footer={
         <>
           Chưa có tài khoản?{' '}
-          <Link
-            to="/dang-ky"
-            className="font-semibold text-primary hover:underline"
-          >
+          <Link to="/dang-ky" className="font-semibold text-primary hover:underline">
             Đăng ký miễn phí
           </Link>
         </>
@@ -91,11 +88,19 @@ export default function LoginPage() {
           {...passwordField}
         />
 
-        <button
-          type="submit"
-          disabled={submitting}
-          className="btn-primary w-full py-3"
-        >
+        {/* Remember me */}
+        <label className="flex cursor-pointer items-center gap-2.5 text-sm text-ink-soft">
+          <input
+            type="checkbox"
+            name="rememberMe"
+            checked={form.rememberMe}
+            onChange={(e) => setForm((prev) => ({ ...prev, rememberMe: e.target.checked }))}
+            className="h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary"
+          />
+          <span>Ghi nhớ đăng nhập (giữ phiên 7 ngày, không bị out khi reload)</span>
+        </label>
+
+        <button type="submit" disabled={submitting} className="btn-primary w-full py-3">
           {submitting ? 'Đang đăng nhập...' : 'Đăng nhập'}
           {!submitting ? <Icon name="arrowRight" size={18} /> : null}
         </button>

@@ -32,8 +32,10 @@ const SALT_ROUNDS = 10;
  * @property {string} name
  */
 
-/** Ký access token. Payload chứa thông tin account + created_at. */
-const signAccessToken = (principal) =>
+/** Ký access token. Payload chứa thông tin account + created_at.
+ *  Khi rememberMe = true, TTL kéo dài 7 ngày (phiên duy trì qua reload/đóng tab).
+ *  Mặc định 15 phút (hết hạn nhanh khi không chọn nhớ). */
+const signAccessToken = (principal, rememberMe = false) =>
   jwt.sign(
     {
       sub: principal.id,
@@ -41,9 +43,14 @@ const signAccessToken = (principal) =>
       email: principal.email,
       name: principal.name,
       created_at: principal.created_at,
+      remember: rememberMe,
     },
     config.jwt.secret,
-    { expiresIn: config.jwt.accessTokenTtl },
+    {
+      expiresIn: rememberMe
+        ? config.jwt.refreshTokenTtl // 7d khi nhớ đăng nhập
+        : config.jwt.accessTokenTtl, // 15m mặc định
+    },
   );
 
 class AuthService {
@@ -98,15 +105,15 @@ class AuthService {
       created_at: record.created_at,
     };
 
-    return { user: principal, accessToken: signAccessToken(principal) };
+    return { user: principal, accessToken: signAccessToken(principal, rest.rememberMe) };
   }
 
   /**
    * Đăng nhập bằng email + password. Tự xác định role từ bảng chứa email.
-   * @param {{email:string, password:string}} credentials
+   * @param {{email:string, password:string, rememberMe?:boolean}} credentials
    * @returns {Promise<{user: Principal, accessToken: string}>}
    */
-  static async login({ email, password }) {
+  static async login({ email, password, rememberMe = false }) {
     const account = await AuthRepository.findAccountByEmail(email);
     if (!account) {
       // Thông báo chung để không tiết lộ email nào tồn tại.
@@ -129,7 +136,7 @@ class AuthService {
       created_at: account.created_at,
     };
 
-    return { user: principal, accessToken: signAccessToken(principal) };
+    return { user: principal, accessToken: signAccessToken(principal, rememberMe) };
   }
 
   /**

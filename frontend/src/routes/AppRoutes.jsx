@@ -5,6 +5,9 @@ import HashScroll from './HashScroll.jsx';
 import HomePage from '../pages/HomePage.jsx';
 import JobsPage from '../pages/JobsPage.jsx';
 import JobDetailPage from '../pages/JobDetailPage.jsx';
+import AiLogsPage from '../pages/AiLogsPage.jsx';
+import AiStatsPage from '../pages/AiStatsPage.jsx';
+import RecommendedPage, { SessionDetailPage } from '../pages/RecommendedPage.jsx';
 import LoginPage from '../pages/LoginPage.jsx';
 import RegisterPage from '../pages/RegisterPage.jsx';
 import RegisterEmployerPage from '../pages/RegisterEmployerPage.jsx';
@@ -32,6 +35,10 @@ export default function AppRoutes() {
           <Route path="/" element={<HomePage />} />
           <Route path="/viec-lam" element={<JobsPage />} />
           <Route path="/viec-lam/:id" element={<JobDetailPage />} />
+          <Route path="/ai-logs" element={<AiLogsPage />} />
+          <Route path="/admin/ai-stats" element={<AiStatsPage />} />
+          <Route path="/de-xuat" element={<RecommendedPage />} />
+          <Route path="/de-xuat/:sessionId" element={<SessionDetailPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

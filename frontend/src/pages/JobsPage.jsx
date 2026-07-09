@@ -4,8 +4,10 @@ import { useSearchParams } from 'react-router-dom';
 import Icon from '../components/ui/Icon.jsx';
 import JobFilterSidebar from '../components/job/JobFilterSidebar.jsx';
 import JobListItem from '../components/job/JobListItem.jsx';
+import AIScoreModal from '../components/job/AIScoreModal.jsx';
 import { mockJobs } from '../data/jobsList.js';
 import provinces from '../data/provinces.js';
+import { saveSession } from '../utils/aiScores.js';
 
 const PAGE_SIZE = 10;
 
@@ -15,6 +17,8 @@ const SORT_OPTIONS = [
   { value: 'salaryDesc', label: 'Lương cao nhất' },
   { value: 'urgent', label: 'Cần tuyển gấp' },
 ];
+// Only shown when aiScores is populated
+const AI_SORT_OPTION = { value: 'aiScore', label: 'Độ phù hợp AI (cao→thấp)' };
 
 const SEARCH_TYPES = [
   { value: 'both', label: 'Cả hai' },
@@ -85,6 +89,8 @@ export default function JobsPage() {
   const [page, setPage] = useState(1);
   const [jumpIndex, setJumpIndex] = useState(null);
   const [jumpValue, setJumpValue] = useState('');
+  const [showAiScore, setShowAiScore] = useState(false);
+  const [aiScores, setAiScores] = useState(null);
 
   const facets = useMemo(() => buildFacets(mockJobs), []);
 
@@ -132,9 +138,16 @@ export default function JobsPage() {
         const bMax = b.negotiable ? 0 : (b.salaryMax ?? b.salaryMin ?? 0);
         return bMax - aMax;
       });
+    } else if (sort === 'aiScore') {
+      // Sort by AI match score descending (jobs without score go last)
+      result = [...result].sort((a, b) => {
+        const aScore = aiScores?.[a.id]?.match_score ?? -1;
+        const bScore = aiScores?.[b.id]?.match_score ?? -1;
+        return bScore - aScore;
+      });
     }
     return result;
-  }, [keyword, locationQuery, filters, sort, searchType]);
+  }, [keyword, locationQuery, filters, sort, searchType, aiScores]);
 
   // ---- pagination ----
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -267,25 +280,57 @@ export default function JobsPage() {
 
         <div className="mt-6 flex-1 lg:mt-0">
           {/* Toolbar */}
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-ink-soft">
               Hiển thị <strong className="text-ink">{pageJobs.length}</strong> / {filtered.length}{' '}
               việc làm
             </p>
-            <label className="flex items-center gap-2 text-sm text-ink-soft">
-              <span className="hidden sm:inline">Sắp xếp:</span>
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value)}
-                className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-ink focus:border-primary"
+            <div className="flex items-center gap-2">
+              {/* AI Score button — chỉ bật khi filtered jobs ≤ 100 */}
+              <button
+                type="button"
+                onClick={() => setShowAiScore(true)}
+                disabled={filtered.length === 0 || filtered.length > 100}
+                title={
+                  filtered.length > 100
+                    ? `Lọc xuống ≤100 việc làm (hiện ${filtered.length}) để bật AI Matching`
+                    : 'Chấm điểm CV với AI DeepSeek'
+                }
+                className={
+                  filtered.length > 0 && filtered.length <= 100
+                    ? 'inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-sm font-medium text-white shadow-soft hover:bg-primary-700'
+                    : 'inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-sm text-ink-muted'
+                }
               >
-                {SORT_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+                <Icon name="sparkles" size={16} />
+                AI Matching
+                {filtered.length > 100 && (
+                  <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">
+                    cần ≤100
+                  </span>
+                )}
+                {aiScores && filtered.length <= 100 && (
+                  <span className="ml-1 rounded-full bg-green-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    ✓
+                  </span>
+                )}
+              </button>
+              <label className="flex items-center gap-2 text-sm text-ink-soft">
+                <span className="hidden sm:inline">Sắp xếp:</span>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-ink focus:border-primary"
+                >
+                  {SORT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                  {aiScores && <option value={AI_SORT_OPTION.value}>{AI_SORT_OPTION.label}</option>}
+                </select>
+              </label>
+            </div>
           </div>
 
           {/* Active filter chips */}
@@ -316,7 +361,7 @@ export default function JobsPage() {
           {pageJobs.length > 0 ? (
             <div className="space-y-3">
               {pageJobs.map((job) => (
-                <JobListItem key={job.id} job={job} />
+                <JobListItem key={job.id} job={job} score={aiScores?.[job.id]} />
               ))}
             </div>
           ) : (
@@ -411,6 +456,24 @@ export default function JobsPage() {
           )}
         </div>
       </div>
+      {/* AI Score modal */}
+      <AIScoreModal
+        jobs={filtered}
+        isOpen={showAiScore}
+        onClose={() => setShowAiScore(false)}
+        onScored={(scores, cvName) => {
+          setAiScores(scores);
+          setSort('aiScore');
+          setPage(1);
+          // Lưu vào localStorage theo phiên
+          saveSession({
+            cvName: cvName || 'Phiên chấm điểm',
+            method: 'ai',
+            scores,
+            jobs: filtered,
+          });
+        }}
+      />
     </div>
   );
 }

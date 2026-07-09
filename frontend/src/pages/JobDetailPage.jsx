@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import Icon from '../components/ui/Icon.jsx';
+import ApplyModal from '../components/job/ApplyModal.jsx';
 import { cn } from '../utils/cn.js';
 import { mockJobs } from '../data/jobsList.js';
 
@@ -19,6 +20,7 @@ export default function JobDetailPage() {
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
   const [applied, setApplied] = useState(false);
+  const [showApply, setShowApply] = useState(false);
 
   const job = mockJobs.find((j) => j.id === id);
 
@@ -209,7 +211,7 @@ export default function JobDetailPage() {
               <div className="mt-5 space-y-2">
                 <button
                   type="button"
-                  onClick={() => setApplied(true)}
+                  onClick={() => setShowApply(true)}
                   disabled={applied}
                   className={cn('btn-primary w-full', applied && 'bg-green-600 hover:bg-green-600')}
                 >
@@ -249,6 +251,15 @@ export default function JobDetailPage() {
           </aside>
         </div>
       </div>
+      <ApplyModal
+        job={job}
+        isOpen={showApply}
+        onClose={() => setShowApply(false)}
+        onSubmit={(data) => {
+          console.log('Apply:', data);
+          setApplied(true);
+        }}
+      />
     </div>
   );
 }

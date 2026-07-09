@@ -388,12 +388,17 @@ CREATE TABLE admin (
 -- =====================================================================
 CREATE TABLE ai_matching_log (
   log_id BIGSERIAL PRIMARY KEY,
-  job_seeker_id BIGINT NOT NULL,
+  job_seeker_id BIGINT NULL,                     -- Migration 002: NULL cho AI matching ẩn danh
   prompt_text TEXT NOT NULL,
   response_text TEXT NOT NULL,
   model_name VARCHAR(100),
   total_jobs_sent INT,
   processing_time_ms INT,
+  task VARCHAR(50),                               -- Migration 002
+  tokens_in INTEGER DEFAULT 0,                    -- Migration 002
+  tokens_out INTEGER DEFAULT 0,                   -- Migration 002
+  success BOOLEAN DEFAULT TRUE,                   -- Migration 002
+  error TEXT,                                     -- Migration 002
   created_at TIMESTAMPTZ DEFAULT now(),
   CONSTRAINT fk_ai_matching_log_job_seeker
       FOREIGN KEY (job_seeker_id) REFERENCES job_seeker(job_seeker_id)

@@ -35,7 +35,7 @@ export async function chatCompletion({ task, messages, metadata = {} }) {
   const body = {
     model: config.deepseek.model,
     messages,
-    temperature: 0.2, // giảm sáng tạo để output ổn định
+    temperature: 0, // 0 = deterministic — cùng input luôn ra cùng kết quả
     response_format: { type: 'json_object' },
   };
 

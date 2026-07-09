@@ -10,6 +10,7 @@ import { useAuth } from '../../context/AuthContext.jsx';
 
 const navLinks = [
   { label: 'Việc làm', to: '/viec-lam' },
+  { label: 'Đề xuất', to: '/de-xuat' },
   { label: 'Công ty', to: '/#top-companies' },
   { label: 'Hồ sơ & AI', to: '/#ai-analysis' },
   { label: 'Cẩm nang nghề nghiệp', to: '/#career-resources' },
@@ -164,6 +165,31 @@ export default function Navbar() {
                         <Icon name="users" size={16} />
                         Hồ sơ cá nhân
                       </Link>
+                      <Link
+                        to="/de-xuat"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-slate-50 hover:text-primary"
+                      >
+                        <Icon name="bookmark" size={16} />
+                        Kết quả chấm điểm đã lưu
+                      </Link>
+                      {/* Admin-only links */}
+                      {user?.role === 'admin' && (
+                        <>
+                          <div className="border-t border-slate-100 my-1" />
+                          <p className="px-4 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
+                            Quản trị
+                          </p>
+                          <Link
+                            to="/admin/ai-stats"
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-slate-50 hover:text-primary"
+                          >
+                            <Icon name="trendingUp" size={16} />
+                            Thống kê AI Logs
+                          </Link>
+                        </>
+                      )}
                       <button
                         type="button"
                         onClick={handleLogout}

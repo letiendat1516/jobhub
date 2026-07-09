@@ -1,7 +1,7 @@
 import { useState } from 'react';
-
 import Icon from '../ui/Icon.jsx';
 import { cn } from '../../utils/cn.js';
+import ApplyModal from './ApplyModal.jsx';
 
 /**
  * JobCard — premium featured-job card.
@@ -11,6 +11,7 @@ import { cn } from '../../utils/cn.js';
  */
 export default function JobCard({ job }) {
   const [saved, setSaved] = useState(false);
+  const [showApply, setShowApply] = useState(false);
 
   return (
     <article className="group relative flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 shadow-card transition-all duration-300 hover:-translate-y-1 hover:border-primary-100 hover:shadow-elevated">
@@ -99,9 +100,19 @@ export default function JobCard({ job }) {
               variant={saved ? 'fill' : 'stroke'}
             />
           </button>
-          <button type="button" className="btn-primary px-4 py-2 text-xs">
+          <button
+            type="button"
+            onClick={() => setShowApply(true)}
+            className="btn-primary px-4 py-2 text-xs"
+          >
             Ứng tuyển
           </button>
+          <ApplyModal
+            job={job}
+            isOpen={showApply}
+            onClose={() => setShowApply(false)}
+            onSubmit={(data) => console.log('Apply:', data)}
+          />
         </div>
       </div>
     </article>
