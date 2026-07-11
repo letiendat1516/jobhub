@@ -17,7 +17,60 @@ const navLinks = [
 ];
 
 const roleLabel = (role) => (role === 'employer' ? 'NTD' : role === 'admin' ? 'Admin' : 'Ứng viên');
+const getUserMenuItems = (role) => {
+  if (role === 'employer') {
+    return [
+      {
+        label: 'Hồ sơ công ty',
+        to: '/employer/company-profile',
+        icon: 'users',
+      },
+      {
+        label: 'Quản lý tin tuyển dụng',
+        to: '/employer/jobs',
+        icon: 'bookmark',
+      },
+      {
+        label: 'Đăng tin tuyển dụng',
+        to: '/employer/jobs/create',
+        icon: 'bookmark',
+      },
+    ];
+  }
 
+  if (role === 'admin') {
+    return [
+      {
+        label: 'Duyệt tin tuyển dụng',
+        to: '/admin/pending-jobs',
+        icon: 'bookmark',
+      },
+      {
+        label: 'Quản lý ngành nghề và kỹ năng',
+        to: '/admin/catalog',
+        icon: 'bookmark',
+      },
+      {
+        label: 'Thống kê AI Logs',
+        to: '/admin/ai-stats',
+        icon: 'trendingUp',
+      },
+    ];
+  }
+
+  return [
+    {
+      label: 'Hồ sơ cá nhân',
+      to: '/ho-so',
+      icon: 'users',
+    },
+    {
+      label: 'Kết quả chấm điểm đã lưu',
+      to: '/de-xuat',
+      icon: 'bookmark',
+    },
+  ];
+};
 /**
  * Navbar — thanh điều hướng chính (tham khảo TopCV).
  *
@@ -34,7 +87,7 @@ export default function Navbar() {
   const scrolled = useScrolled(8);
   const { isAuthenticated, user, logout } = useAuth();
   const navigate = useNavigate();
-
+  const userMenuItems = getUserMenuItems(user?.role);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
@@ -157,39 +210,18 @@ export default function Navbar() {
                       <p className="truncate text-xs text-ink-muted">{user?.email}</p>
                     </div>
                     <div className="py-1">
-                      <Link
-                        to="/ho-so"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-slate-50 hover:text-primary"
-                      >
-                        <Icon name="users" size={16} />
-                        Hồ sơ cá nhân
-                      </Link>
-                      <Link
-                        to="/de-xuat"
-                        onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-slate-50 hover:text-primary"
-                      >
-                        <Icon name="bookmark" size={16} />
-                        Kết quả chấm điểm đã lưu
-                      </Link>
-                      {/* Admin-only links */}
-                      {user?.role === 'admin' && (
-                        <>
-                          <div className="border-t border-slate-100 my-1" />
-                          <p className="px-4 py-1 text-[10px] font-bold uppercase tracking-wide text-ink-muted">
-                            Quản trị
-                          </p>
-                          <Link
-                            to="/admin/ai-stats"
-                            onClick={() => setUserMenuOpen(false)}
-                            className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-slate-50 hover:text-primary"
-                          >
-                            <Icon name="trendingUp" size={16} />
-                            Thống kê AI Logs
-                          </Link>
-                        </>
-                      )}
+                      {userMenuItems.map((item) => (
+                        <Link
+                          key={item.to}
+                          to={item.to}
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-2.5 px-4 py-2 text-sm text-ink-soft transition-colors hover:bg-slate-50 hover:text-primary"
+                        >
+                          <Icon name={item.icon} size={16} />
+                          {item.label}
+                        </Link>
+                      ))}
+
                       <button
                         type="button"
                         onClick={handleLogout}
@@ -253,13 +285,16 @@ export default function Navbar() {
                         <p className="text-xs text-primary">{roleLabel(user.role)}</p>
                       </div>
                     </div>
-                    <Link
-                      to="/ho-so"
-                      onClick={() => setMobileOpen(false)}
-                      className="block rounded-lg px-3 py-2.5 text-sm font-medium text-ink-soft hover:bg-slate-100"
-                    >
-                      Hồ sơ cá nhân
-                    </Link>
+                    {userMenuItems.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setMobileOpen(false)}
+                        className="block rounded-lg px-3 py-2.5 text-sm font-medium text-ink-soft hover:bg-slate-100"
+                      >
+                        {item.label}
+                      </Link>
+                    ))}
                     <button
                       type="button"
                       onClick={handleLogout}

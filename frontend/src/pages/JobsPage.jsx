@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 
 import Icon from '../components/ui/Icon.jsx';
@@ -8,6 +8,8 @@ import AIScoreModal from '../components/job/AIScoreModal.jsx';
 import { mockJobs } from '../data/jobsList.js';
 import provinces from '../data/provinces.js';
 import { saveSession } from '../utils/aiScores.js';
+import jobService from '../services/jobService.js';
+import { mergeJobs } from '../utils/jobMapper.js';
 
 const PAGE_SIZE = 10;
 
@@ -70,6 +72,12 @@ function salaryMatches(job, bands) {
 }
 
 export default function JobsPage() {
+  const [jobs, setJobs] = useState(
+    mockJobs.map((job) => ({ ...job, source: job.source || 'mock' })),
+  );
+  const [jobsLoading, setJobsLoading] = useState(true);
+  const [jobsError, setJobsError] = useState('');
+
   // Read initial search criteria from URL (?q=...&location=...) set by
   // the homepage SearchBar so results match what the user searched for.
   const [searchParams, setSearchParams] = useSearchParams();
@@ -92,13 +100,58 @@ export default function JobsPage() {
   const [showAiScore, setShowAiScore] = useState(false);
   const [aiScores, setAiScores] = useState(null);
 
-  const facets = useMemo(() => buildFacets(mockJobs), []);
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadApprovedJobs = async () => {
+      try {
+        setJobsLoading(true);
+        setJobsError('');
+
+        const apiJobs = await jobService.searchJobs({
+          page: 1,
+          limit: 100,
+        });
+
+        if (!cancelled) {
+          setJobs(mergeJobs(mockJobs, Array.isArray(apiJobs) ? apiJobs : []));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setJobsError(
+            err?.message ||
+              'Không thể tải các tin tuyển dụng mới từ hệ thống.',
+          );
+
+          // Nếu backend lỗi, trang vẫn hiển thị dữ liệu mẫu.
+          setJobs(
+            mockJobs.map((job) => ({
+              ...job,
+              source: job.source || 'mock',
+            })),
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setJobsLoading(false);
+        }
+      }
+    };
+
+    loadApprovedJobs();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const facets = useMemo(() => buildFacets(jobs), [jobs]);
 
   // ---- filtering ----
   const filtered = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
     const loc = locationQuery.trim().toLowerCase();
-    let result = mockJobs.filter((j) => {
+    let result = jobs.filter((j) => {
       if (kw) {
         const hayTitle = j.title.toLowerCase();
         const hayCompany = j.company.name.toLowerCase();
@@ -147,7 +200,7 @@ export default function JobsPage() {
       });
     }
     return result;
-  }, [keyword, locationQuery, filters, sort, searchType, aiScores]);
+  }, [jobs, keyword, locationQuery, filters, sort, searchType, aiScores]);
 
   // ---- pagination ----
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
@@ -265,6 +318,22 @@ export default function JobsPage() {
           </div>
         </div>
       </header>
+
+      {(jobsLoading || jobsError) && (
+        <div className="mx-auto max-w-7xl px-4 pt-5 sm:px-6 lg:px-8">
+          {jobsLoading ? (
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-700">
+              Đang tải thêm các tin tuyển dụng đã được quản trị viên duyệt...
+            </div>
+          ) : null}
+
+          {jobsError ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
+              {jobsError} Trang hiện vẫn đang hiển thị dữ liệu mẫu.
+            </div>
+          ) : null}
+        </div>
+      )}
 
       {/* Body: sidebar + results */}
       <div className="mx-auto max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:flex lg:px-8">

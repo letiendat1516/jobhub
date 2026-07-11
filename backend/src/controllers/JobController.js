@@ -8,42 +8,109 @@
  *
  * Implemented in Phase 7 (Job).
  */
-import ApiError from '../utils/ApiError.js';
+import ApiResponse from '../utils/ApiResponse.js';
+import JobService from '../services/JobService.js';
 
 class JobController {
-  /** GET /api/jobs — search/list with filters */
-  static async getJobs(_req, _res) {
-    throw ApiError.notImplemented('JobController.getJobs');
+  static async getJobs(req, res) {
+    const result = await JobService.searchJobs(req.query);
+
+    return ApiResponse.ok(res, result.items, {
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    });
   }
 
-  /** GET /api/jobs/:id */
-  static async getJobById(_req, _res) {
-    throw ApiError.notImplemented('JobController.getJobById');
+  static async getJobById(req, res) {
+    const job = await JobService.getJobById(req.params.id);
+    return ApiResponse.ok(res, job);
   }
 
-  /** POST /api/jobs */
-  static async createJob(_req, _res) {
-    throw ApiError.notImplemented('JobController.createJob');
+  static async getMyJobPostings(req, res) {
+    const result = await JobService.getEmployerJobs(req.user.sub);
+
+    return ApiResponse.ok(res, result.items, {
+      total: result.total,
+    });
   }
 
-  /** PUT /api/jobs/:id */
-  static async updateJob(_req, _res) {
-    throw ApiError.notImplemented('JobController.updateJob');
+  static async createJob(req, res) {
+    const job = await JobService.createJob(req.user.sub, req.body);
+    return ApiResponse.created(res, job);
   }
 
-  /** DELETE /api/jobs/:id */
-  static async deleteJob(_req, _res) {
-    throw ApiError.notImplemented('JobController.deleteJob');
+  static async updateJob(req, res) {
+    const job = await JobService.updateJob(req.user.sub, req.params.id, req.body);
+    return ApiResponse.ok(res, job);
   }
 
-  /** PATCH /api/jobs/:id/close */
-  static async closeJob(_req, _res) {
-    throw ApiError.notImplemented('JobController.closeJob');
+  static async deleteJob(req, res) {
+    const result = await JobService.deleteJob(req.user.sub, req.params.id);
+    return ApiResponse.ok(res, result);
   }
 
-  /** GET /api/jobs/:id/applicants */
-  static async getApplicants(_req, _res) {
-    throw ApiError.notImplemented('JobController.getApplicants');
+  static async closeJob(req, res) {
+    const job = await JobService.closeJob(req.user.sub, req.params.id);
+    return ApiResponse.ok(res, job);
+  }
+
+  static async getPendingReviewJobs(_req, res) {
+    const result = await JobService.getPendingReviewJobs();
+
+    return ApiResponse.ok(res, result.items, {
+      total: result.total,
+    });
+  }
+
+  static async moderateJob(req, res) {
+    const job = await JobService.moderateJob(req.params.id, req.body.decision);
+    return ApiResponse.ok(res, job);
+  }
+
+  static async listCategories(_req, res) {
+    const categories = await JobService.listCategories();
+    return ApiResponse.ok(res, categories);
+  }
+
+  static async createCategory(req, res) {
+    const category = await JobService.createCategory(req.body.name);
+    return ApiResponse.created(res, category);
+  }
+
+  static async updateCategory(req, res) {
+    const category = await JobService.updateCategory(req.params.id, req.body.name);
+    return ApiResponse.ok(res, category);
+  }
+
+  static async deleteCategory(req, res) {
+    const result = await JobService.deleteCategory(req.params.id);
+    return ApiResponse.ok(res, result);
+  }
+
+  static async listSkills(_req, res) {
+    const skills = await JobService.listSkills();
+    return ApiResponse.ok(res, skills);
+  }
+
+  static async createSkill(req, res) {
+    const skill = await JobService.createSkill(req.body.name);
+    return ApiResponse.created(res, skill);
+  }
+
+  static async updateSkill(req, res) {
+    const skill = await JobService.updateSkill(req.params.id, req.body.name);
+    return ApiResponse.ok(res, skill);
+  }
+
+  static async deleteSkill(req, res) {
+    const result = await JobService.deleteSkill(req.params.id);
+    return ApiResponse.ok(res, result);
+  }
+
+  static async getApplicants(req, res) {
+    const applicants = await JobService.getApplicants(req.user.sub, req.params.id);
+    return ApiResponse.ok(res, applicants);
   }
 }
 

@@ -2,6 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 
 import PublicLayout from '../layouts/PublicLayout.jsx';
 import HashScroll from './HashScroll.jsx';
+import RoleGuard from './RoleGuard.jsx';
+
 import HomePage from '../pages/HomePage.jsx';
 import JobsPage from '../pages/JobsPage.jsx';
 import JobDetailPage from '../pages/JobDetailPage.jsx';
@@ -13,24 +15,30 @@ import RegisterPage from '../pages/RegisterPage.jsx';
 import RegisterEmployerPage from '../pages/RegisterEmployerPage.jsx';
 import NotFoundPage from '../pages/NotFoundPage.jsx';
 
+import EmployerJobsPage from '../pages/EmployerJobsPage.jsx';
+import CreateJobPage from '../pages/CreateJobPage.jsx';
+import EmployerCompanyProfilePage from '../pages/EmployerCompanyProfilePage.jsx';
+import AdminPendingJobsPage from '../pages/AdminPendingJobsPage.jsx';
+import CatalogManagementPage from '../pages/CatalogManagementPage.jsx';
+
 /**
  * AppRoutes — application route table.
  *
- * Auth pages (login/register) dùng AuthShell riêng (không navbar/footer),
- * nằm NGOÀI PublicLayout. Các trang public còn lại dùng PublicLayout
- * (Navbar + Footer chung).
+ * Auth pages dùng layout riêng, không qua PublicLayout.
+ * Các trang còn lại dùng PublicLayout để có Navbar + Footer.
  */
 export default function AppRoutes() {
   return (
     <>
       <HashScroll />
+
       <Routes>
-        {/* Auth — không qua PublicLayout */}
+        {/* Auth pages */}
         <Route path="/dang-nhap" element={<LoginPage />} />
         <Route path="/dang-ky" element={<RegisterPage />} />
         <Route path="/dang-ky-nha-tuyen-dung" element={<RegisterEmployerPage />} />
 
-        {/* Public pages — có Navbar + Footer chung */}
+        {/* Public pages */}
         <Route element={<PublicLayout />}>
           <Route path="/" element={<HomePage />} />
           <Route path="/viec-lam" element={<JobsPage />} />
@@ -39,6 +47,54 @@ export default function AppRoutes() {
           <Route path="/admin/ai-stats" element={<AiStatsPage />} />
           <Route path="/de-xuat" element={<RecommendedPage />} />
           <Route path="/de-xuat/:sessionId" element={<SessionDetailPage />} />
+
+          {/* Employer pages */}
+          <Route
+            path="/employer/company-profile"
+            element={
+              <RoleGuard roles={['employer']}>
+                <EmployerCompanyProfilePage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/employer/jobs"
+            element={
+              <RoleGuard roles={['employer']}>
+                <EmployerJobsPage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/employer/jobs/create"
+            element={
+              <RoleGuard roles={['employer']}>
+                <CreateJobPage />
+              </RoleGuard>
+            }
+          />
+
+          {/* Admin pages */}
+          <Route
+            path="/admin/pending-jobs"
+            element={
+              <RoleGuard roles={['admin']}>
+                <AdminPendingJobsPage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/admin/catalog"
+            element={
+              <RoleGuard roles={['admin']}>
+                <CatalogManagementPage />
+              </RoleGuard>
+            }
+          />
+
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 
 import Icon from '../components/ui/Icon.jsx';
 import ApplyModal from '../components/job/ApplyModal.jsx';
 import { cn } from '../utils/cn.js';
 import { mockJobs } from '../data/jobsList.js';
+import jobService from '../services/jobService.js';
+import { normalizeApiJob } from '../utils/jobMapper.js';
 
 /**
  * JobDetailPage — full job detail (UC06 View Job Details).
@@ -21,8 +23,76 @@ export default function JobDetailPage() {
   const [saved, setSaved] = useState(false);
   const [applied, setApplied] = useState(false);
   const [showApply, setShowApply] = useState(false);
+  const mockJob = mockJobs.find((job) => String(job.id) === String(id));
+  const [apiJob, setApiJob] = useState(null);
+  const [loading, setLoading] = useState(!mockJob);
+  const [error, setError] = useState('');
 
-  const job = mockJobs.find((j) => j.id === id);
+  useEffect(() => {
+    let cancelled = false;
+
+    if (mockJob) {
+      setApiJob(null);
+      setLoading(false);
+      setError('');
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const loadJob = async () => {
+      try {
+        setLoading(true);
+        setError('');
+
+        const data = await jobService.getJobById(id);
+
+        if (!cancelled && data) {
+          setApiJob(normalizeApiJob(data));
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err?.message || 'Không thể tải chi tiết tin tuyển dụng.');
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    loadJob();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [id, mockJob]);
+
+  const job = mockJob || apiJob;
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-24 text-center">
+        <div className="rounded-xl border bg-white p-6 text-ink-soft">
+          Đang tải chi tiết tin tuyển dụng...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="mx-auto flex max-w-2xl flex-col items-center justify-center px-4 py-24 text-center">
+        <div className="w-full rounded-xl border border-red-200 bg-red-50 p-6 text-red-600">
+          {error}
+        </div>
+        <Link to="/viec-lam" className="btn-primary mt-6">
+          <Icon name="arrowLeft" size={18} />
+          Quay lại danh sách
+        </Link>
+      </div>
+    );
+  }
 
   if (!job) {
     return (
@@ -105,7 +175,11 @@ export default function JobDetailPage() {
                 <Meta icon="wallet" label="Mức lương" value={job.salaryLabel} highlight />
                 <Meta icon="mapPin" label="Địa điểm" value={job.location} />
                 <Meta icon="briefcase" label="Kinh nghiệm" value={job.experienceLabel} />
-                <Meta icon="clock" label="Hạn nộp" value="30/08/2026" />
+                <Meta
+                  icon="clock"
+                  label="Hạn nộp"
+                  value={job.deadlineLabel || 'Chưa cập nhật'}
+                />
               </dl>
             </div>
 
@@ -203,8 +277,16 @@ export default function JobDetailPage() {
                   label="Hình thức"
                   value={`${job.workType} • ${job.employmentType}`}
                 />
-                <SummaryRow icon="calendar" label="Hạn nộp" value="30/08/2026 (còn 53 ngày)" />
-                <SummaryRow icon="users" label="Đã ứng tuyển" value="12 người" />
+                <SummaryRow
+                  icon="calendar"
+                  label="Hạn nộp"
+                  value={job.deadlineFullLabel || 'Chưa cập nhật'}
+                />
+                <SummaryRow
+                  icon="users"
+                  label="Đã ứng tuyển"
+                  value={job.applicationsLabel || '0 người'}
+                />
               </dl>
 
               {/* Actions */}

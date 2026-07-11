@@ -7,32 +7,41 @@
  *
  * Implemented in Phase 5 (Employer).
  */
-import ApiError from '../utils/ApiError.js';
+import ApiResponse from '../utils/ApiResponse.js';
+import EmployerService from '../services/EmployerService.js';
 
 class EmployerController {
-  /** POST /api/employers/register */
-  static async register(_req, _res) {
-    throw ApiError.notImplemented('EmployerController.register');
+  static async listEmployers(req, res) {
+    const result = await EmployerService.listEmployers(req.query);
+
+    return ApiResponse.ok(res, result.items, {
+      total: result.total,
+      page: result.page,
+      limit: result.limit,
+    });
   }
 
-  /** GET /api/employers/me */
-  static async getProfile(_req, _res) {
-    throw ApiError.notImplemented('EmployerController.getProfile');
+  static async getProfile(req, res) {
+    const profile = await EmployerService.getProfile(req.user.sub);
+    return ApiResponse.ok(res, profile);
   }
 
-  /** PUT /api/employers/me */
-  static async updateProfile(_req, _res) {
-    throw ApiError.notImplemented('EmployerController.updateProfile');
+  static async updateProfile(req, res) {
+    const profile = await EmployerService.updateProfile(req.user.sub, req.body);
+    return ApiResponse.ok(res, profile);
   }
 
-  /** GET /api/employers/:id */
-  static async getEmployerById(_req, _res) {
-    throw ApiError.notImplemented('EmployerController.getEmployerById');
+  static async getEmployerById(req, res) {
+    const profile = await EmployerService.getPublicProfile(req.params.id);
+    return ApiResponse.ok(res, profile);
   }
 
-  /** GET /api/employers/:id/jobs */
-  static async getEmployerJobs(_req, _res) {
-    throw ApiError.notImplemented('EmployerController.getEmployerJobs');
+  static async getEmployerJobs(req, res) {
+    const result = await EmployerService.getEmployerJobs(req.params.id);
+
+    return ApiResponse.ok(res, result.items, {
+      total: result.total,
+    });
   }
 }
 
