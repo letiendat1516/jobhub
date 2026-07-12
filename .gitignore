@@ -1,6 +1,11 @@
 # Dependencies
 node_modules/
 
+# Local agent tooling and Supabase workspace
+.codex/
+.agents/
+supabase/
+
 # Build artifacts
 dist/
 build/
@@ -22,6 +27,8 @@ ai-lab/logs/*.json
 # Logs
 *.log
 npm-debug.log*
+backend/uploads/resumes/*
+!backend/uploads/resumes/.gitkeep
 
 # Editor / OS
 .vscode/

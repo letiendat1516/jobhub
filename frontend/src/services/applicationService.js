@@ -1,14 +1,13 @@
-/**
- * applicationService — Job application API surface.
- * Scaffold only. Wired in Phase 8 (Application).
- */
 import apiClient from './apiClient.js';
 
 const applicationService = {
-  /** POST /applications */
-  apply: (_payload) => apiClient.post('/applications', _payload),
-  /** GET /applications/me */
-  getMyApplications: () => apiClient.get('/applications/me'),
+  getApplyContext: (jobId) => apiClient.get(`/applications/apply-context/${jobId}`),
+  apply: (payload) => apiClient.post('/applications', payload),
+  getMyApplications: (params = {}) => apiClient.get('/applications/me', { params }),
+  getMyApplication: (id) => apiClient.get(`/applications/me/${id}`),
+  getEmployerApplications: (params = {}) => apiClient.get('/applications/employer', { params }),
+  reviewApplication: (id) => apiClient.get(`/applications/employer/${id}`),
+  updateStatus: (id, payload) => apiClient.patch(`/applications/employer/${id}/status`, payload),
 };
 
 export default applicationService;
