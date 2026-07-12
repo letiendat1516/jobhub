@@ -16,14 +16,16 @@
  */
 import ApiError from '../utils/ApiError.js';
 
-const validateRequest = (schema) => (req, _res, next) => {
-  try {
-    const parsed = schema.parse(req.body);
-    req.body = parsed; // replace with the coerced/cleaned payload
-    return next();
-  } catch (error) {
-    return next(ApiError.badRequest('Dữ liệu gửi lên không hợp lệ.', error.flatten()));
-  }
-};
+const validateRequest =
+  (schema, source = 'body') =>
+  (req, _res, next) => {
+    try {
+      const parsed = schema.parse(req[source]);
+      req[source] = parsed; // replace with the coerced/cleaned payload
+      return next();
+    } catch (error) {
+      return next(ApiError.badRequest('Dữ liệu gửi lên không hợp lệ.', error.flatten()));
+    }
+  };
 
 export default validateRequest;

@@ -20,6 +20,11 @@ import CreateJobPage from '../pages/CreateJobPage.jsx';
 import EmployerCompanyProfilePage from '../pages/EmployerCompanyProfilePage.jsx';
 import AdminPendingJobsPage from '../pages/AdminPendingJobsPage.jsx';
 import CatalogManagementPage from '../pages/CatalogManagementPage.jsx';
+import MyApplicationsPage, { MyApplicationDetailPage } from '../pages/MyApplicationsPage.jsx';
+import EmployerApplicationsPage, {
+  EmployerApplicationReviewPage,
+} from '../pages/EmployerApplicationsPage.jsx';
+import ResumePage from '../pages/ResumePage.jsx';
 
 /**
  * AppRoutes — application route table.
@@ -47,6 +52,31 @@ export default function AppRoutes() {
           <Route path="/admin/ai-stats" element={<AiStatsPage />} />
           <Route path="/de-xuat" element={<RecommendedPage />} />
           <Route path="/de-xuat/:sessionId" element={<SessionDetailPage />} />
+          <Route
+            path="/ho-so"
+            element={
+              <RoleGuard roles={['job_seeker']}>
+                <ResumePage />
+              </RoleGuard>
+            }
+          />
+
+          <Route
+            path="/applications"
+            element={
+              <RoleGuard roles={['job_seeker']}>
+                <MyApplicationsPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/applications/:applicationId"
+            element={
+              <RoleGuard roles={['job_seeker']}>
+                <MyApplicationDetailPage />
+              </RoleGuard>
+            }
+          />
 
           {/* Employer pages */}
           <Route
@@ -72,6 +102,22 @@ export default function AppRoutes() {
             element={
               <RoleGuard roles={['employer']}>
                 <CreateJobPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/employer/applications"
+            element={
+              <RoleGuard roles={['employer', 'admin']}>
+                <EmployerApplicationsPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/employer/applications/:applicationId"
+            element={
+              <RoleGuard roles={['employer', 'admin']}>
+                <EmployerApplicationReviewPage />
               </RoleGuard>
             }
           />

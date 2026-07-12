@@ -1,39 +1,28 @@
-/**
- * ResumeController
- * ------------------------------------------------------------------
- * HTTP entry point for candidate resumes (PDF upload + management).
- *
- * Delegates to ResumeService, which orchestrates the AI analysis
- * workflow (see docs/02_ARCHITECTURE.md §5).
- *
- * Implemented in Phase 6 (Resume) and Phase 9 (AI Resume Analysis).
- */
-import ApiError from '../utils/ApiError.js';
+import ResumeService from '../services/ResumeService.js';
+import ApiResponse from '../utils/ApiResponse.js';
 
 class ResumeController {
-  /** POST /api/resumes (multipart/form-data) */
-  static async uploadResume(_req, _res) {
-    throw ApiError.notImplemented('ResumeController.uploadResume');
+  static async uploadResume(req, res) {
+    return ApiResponse.created(
+      res,
+      await ResumeService.uploadResume(req.user.sub, req.file, req.body),
+    );
   }
-
-  /** GET /api/resumes/me */
-  static async getMyResume(_req, _res) {
-    throw ApiError.notImplemented('ResumeController.getMyResume');
+  static async getMyResume(req, res) {
+    return ApiResponse.ok(res, await ResumeService.getResumes(req.user.sub));
   }
-
-  /** PUT /api/resumes/:id */
-  static async updateResume(_req, _res) {
-    throw ApiError.notImplemented('ResumeController.updateResume');
+  static async updateResume(req, res) {
+    return ApiResponse.ok(
+      res,
+      await ResumeService.updateResume(req.user.sub, req.params.id, req.body),
+    );
   }
-
-  /** DELETE /api/resumes/:id */
-  static async deleteResume(_req, _res) {
-    throw ApiError.notImplemented('ResumeController.deleteResume');
+  static async deleteResume(req, res) {
+    return ApiResponse.ok(res, await ResumeService.deleteResume(req.user.sub, req.params.id));
   }
-
-  /** POST /api/resumes/:id/analyze — triggers AI extraction */
-  static async analyzeResume(_req, _res) {
-    throw ApiError.notImplemented('ResumeController.analyzeResume');
+  static async downloadResume(req, res) {
+    const resume = await ResumeService.getResume(req.user.sub, req.params.id);
+    return res.download(resume.file_path, resume.file_name);
   }
 }
 

@@ -35,6 +35,11 @@ const getUserMenuItems = (role) => {
         to: '/employer/jobs/create',
         icon: 'bookmark',
       },
+      {
+        label: 'Hồ sơ ứng tuyển',
+        to: '/employer/applications',
+        icon: 'users',
+      },
     ];
   }
 
@@ -55,6 +60,11 @@ const getUserMenuItems = (role) => {
         to: '/admin/ai-stats',
         icon: 'trendingUp',
       },
+      {
+        label: 'Hồ sơ ứng tuyển',
+        to: '/employer/applications',
+        icon: 'users',
+      },
     ];
   }
 
@@ -63,6 +73,11 @@ const getUserMenuItems = (role) => {
       label: 'Hồ sơ cá nhân',
       to: '/ho-so',
       icon: 'users',
+    },
+    {
+      label: 'Hồ sơ đã ứng tuyển',
+      to: '/applications',
+      icon: 'briefcase',
     },
     {
       label: 'Kết quả chấm điểm đã lưu',
