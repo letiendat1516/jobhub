@@ -9,6 +9,7 @@ import { Router } from 'express';
 import authRoutes from './authRoutes.js';
 import jobRoutes from './jobRoutes.js';
 import employerRoutes from './employerRoutes.js';
+import jobSeekerRoutes from './jobSeekerRoutes.js';
 import resumeRoutes from './resumeRoutes.js';
 import applicationRoutes from './applicationRoutes.js';
 import recommendationRoutes from './recommendationRoutes.js';
@@ -25,6 +26,7 @@ router.get('/', (_req, res) => {
         'auth',
         'jobs',
         'employers',
+        'jobSeekers',
         'resumes',
         'applications',
         'recommendations',
@@ -36,6 +38,7 @@ router.get('/', (_req, res) => {
 router.use('/auth', authRoutes);
 router.use('/jobs', jobRoutes);
 router.use('/employers', employerRoutes);
+router.use('/job-seekers', jobSeekerRoutes);
 router.use('/resumes', resumeRoutes);
 router.use('/applications', applicationRoutes);
 router.use('/recommendations', recommendationRoutes);
