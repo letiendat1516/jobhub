@@ -73,6 +73,10 @@ class JobSeekerRepository {
     return data;
   }
 
+  static async updateAccountStatus(id, isActive) {
+    return JobSeekerRepository.updateJobSeeker(id, { is_active: isActive });
+  }
+
   static async listEducation(jobSeekerId) {
     const { data, error } = await getClient()
       .from('education')

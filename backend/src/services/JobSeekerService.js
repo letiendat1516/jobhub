@@ -48,6 +48,12 @@ const mapExperienceRows = (rows = []) =>
   }));
 
 class JobSeekerService {
+
+  static async setAccountActive(jobSeekerId, isActive) {
+    const existing = await JobSeekerRepository.findJobSeekerById(jobSeekerId);
+    if (!existing) throw ApiError.notFound('Không tìm thấy tài khoản ứng viên.');
+    return JobSeekerRepository.updateAccountStatus(jobSeekerId, isActive);
+  }
   static async getFullProfile(userId) {
     const [profile, education, experience, skills] = await Promise.all([
       JobSeekerRepository.findJobSeekerById(userId),

@@ -165,11 +165,25 @@ class AuthService {
     if (role === AUTH_ROLES.EMPLOYER) {
       return AuthRepository.findEmployerPublicById(id);
     }
-    // Admin: trả principal tối thiểu (không có profile riêng ngoài band).
     if (role === AUTH_ROLES.ADMIN) {
-      return { id, role, email: null, name: 'Administrator' };
+      return AuthRepository.findAdminPublicById(id);
     }
     return null;
+  }
+
+  /**
+   * Resolve the signed-token subject against the live database state.
+   * This prevents a blocked/deleted account from continuing to use an old JWT.
+   */
+  static async requireActivePrincipal(decoded) {
+    const principal = await AuthService.getPrincipal(decoded.role, decoded.sub);
+    if (!principal) {
+      throw ApiError.unauthorized('Tài khoản không còn tồn tại.');
+    }
+    if (principal.is_active === false) {
+      throw ApiError.forbidden('Tài khoản đã bị vô hiệu hóa.');
+    }
+    return principal;
   }
 }
 

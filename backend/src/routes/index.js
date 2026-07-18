@@ -14,6 +14,7 @@ import resumeRoutes from './resumeRoutes.js';
 import applicationRoutes from './applicationRoutes.js';
 import recommendationRoutes from './recommendationRoutes.js';
 import systemConfigurationRoutes from './systemConfigurationRoutes.js';
+import adminRoutes from './adminRoutes.js';
 const router = Router();
 
 router.get('/', (_req, res) => {
@@ -30,7 +31,8 @@ router.get('/', (_req, res) => {
         'resumes',
         'applications',
         'recommendations',
-        'system-configurations'
+        'system-configurations',
+        'admin',
       ],
     },
   });
@@ -44,5 +46,6 @@ router.use('/resumes', resumeRoutes);
 router.use('/applications', applicationRoutes);
 router.use('/recommendations', recommendationRoutes);
 router.use('/system-configurations', systemConfigurationRoutes);
+router.use('/admin', adminRoutes);
 
 export default router;
