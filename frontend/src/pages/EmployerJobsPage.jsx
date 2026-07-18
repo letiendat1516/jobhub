@@ -35,21 +35,53 @@ const getJobTypeLabel = (value) => {
 
     return labels[value] || 'Chưa cập nhật';
 };
-
 const getStatusLabel = (job) => {
-    if (job.status === 'DRAFT' && !job.is_approved) {
+    if (job.status === 'DRAFT' && job.is_approved === false) {
         return 'Chờ duyệt';
     }
 
-    if (job.status === 'OPEN' && job.is_approved) {
+    if (job.status === 'OPEN' && job.is_approved === true) {
         return 'Đang hiển thị';
     }
 
-    if (job.status === 'CLOSED') {
+    if (job.status === 'CLOSED' && job.is_approved === false) {
+        return 'Bị từ chối';
+    }
+
+    if (job.status === 'CLOSED' && job.is_approved === true) {
         return 'Đã đóng';
     }
 
     return job.status || 'Chưa rõ';
+};
+const getApprovalLabel = (job) => {
+    if (job.is_approved === true) {
+        return 'Đã duyệt';
+    }
+
+    if (
+        job.status === 'CLOSED' &&
+        job.is_approved === false
+    ) {
+        return 'Không được duyệt';
+    }
+
+    return 'Chờ duyệt';
+};
+
+const getApprovalClass = (job) => {
+    if (job.is_approved === true) {
+        return 'text-green-600';
+    }
+
+    if (
+        job.status === 'CLOSED' &&
+        job.is_approved === false
+    ) {
+        return 'text-red-600';
+    }
+
+    return 'text-amber-600';
 };
 
 const formatSalary = (job) => {
@@ -115,40 +147,40 @@ export default function EmployerJobsPage() {
     };
 
     const deleteJob = async (jobId) => {
-    const ok = window.confirm('Bạn có chắc muốn xoá tin tuyển dụng này không?');
-    if (!ok) return;
+        const ok = window.confirm('Bạn có chắc muốn xoá tin tuyển dụng này không?');
+        if (!ok) return;
 
-    try {
-        await jobService.deleteJob(jobId);
-        await loadJobs();
-    } catch (err) {
-        alert(err.response?.data?.message || err.message || 'Không thể xoá tin tuyển dụng.');
+        try {
+            await jobService.deleteJob(jobId);
+            await loadJobs();
+        } catch (err) {
+            alert(err.response?.data?.message || err.message || 'Không thể xoá tin tuyển dụng.');
+        }
+    };
+
+    if (!isAuthenticated) {
+        return <Navigate to="/dang-nhap" replace />;
     }
-};
 
-if (!isAuthenticated) {
-    return <Navigate to="/dang-nhap" replace />;
-}
+    if (user?.role !== 'employer') {
+        return (
+            <main className="mx-auto max-w-4xl px-6 py-28">
+                <p className="text-sm font-semibold uppercase tracking-wide text-red-600">
+                    Không có quyền truy cập
+                </p>
 
-if (user?.role !== 'employer') {
+                <h1 className="mt-2 text-3xl font-bold text-slate-900">
+                    Bạn không thể truy cập trang quản lý tin tuyển dụng
+                </h1>
+
+                <p className="mt-2 text-slate-500">
+                    Chức năng này chỉ dành cho tài khoản nhà tuyển dụng.
+                </p>
+            </main>
+        );
+    }
+
     return (
-        <main className="mx-auto max-w-4xl px-6 py-28">
-            <p className="text-sm font-semibold uppercase tracking-wide text-red-600">
-                Không có quyền truy cập
-            </p>
-
-            <h1 className="mt-2 text-3xl font-bold text-slate-900">
-                Bạn không thể truy cập trang quản lý tin tuyển dụng
-            </h1>
-
-            <p className="mt-2 text-slate-500">
-                Chức năng này chỉ dành cho tài khoản nhà tuyển dụng.
-            </p>
-        </main>
-    );
-}
-
-return (
         <main className="mx-auto max-w-6xl px-6 py-28">
             <div className="mb-8 flex items-center justify-between gap-4">
                 <div>
@@ -218,8 +250,10 @@ return (
                                             {getStatusLabel(job)}
                                         </span>
                                         {' '} | Duyệt:{' '}
-                                        <span className="font-semibold">
-                                            {job.is_approved ? 'Đã duyệt' : 'Chưa duyệt'}
+                                        <span
+                                            className={`font-semibold ${getApprovalClass(job)}`}
+                                        >
+                                            {getApprovalLabel(job)}
                                         </span>
                                     </p>
 

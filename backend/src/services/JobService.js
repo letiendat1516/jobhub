@@ -10,7 +10,7 @@
  */
 import ApiError from '../utils/ApiError.js';
 import JobRepository from '../repositories/JobRepository.js';
-
+import * as systemConfigurationService from './systemConfigurationService.js';
 const WORK_MODE_MAP = {
   onsite: 'ONSITE',
   remote: 'REMOTE',
@@ -109,7 +109,63 @@ class JobService {
     if (!employerId) {
       throw ApiError.unauthorized('Vui lòng đăng nhập bằng tài khoản nhà tuyển dụng.');
     }
+    const [
+      maxSkillsConfig,
+      defaultDeadlineConfig,
+      requireApprovalConfig,
+    ] = await Promise.all([
+      systemConfigurationService.getConfigValue(
+        'MAX_SKILLS_PER_JOB',
+        30,
+      ),
+      systemConfigurationService.getConfigValue(
+        'DEFAULT_DEADLINE_DAYS',
+        30,
+      ),
+      systemConfigurationService.getConfigValue(
+        'REQUIRE_JOB_APPROVAL',
+        true,
+      ),
+    ]);
 
+    const maxSkillsPerJob =
+      Number(maxSkillsConfig) > 0
+        ? Number(maxSkillsConfig)
+        : 30;
+
+    const defaultDeadlineDays =
+      Number(defaultDeadlineConfig) > 0
+        ? Number(defaultDeadlineConfig)
+        : 30;
+
+    const requireApproval =
+      requireApprovalConfig === true ||
+      String(requireApprovalConfig).toLowerCase() ===
+      'true';
+
+    const skillNames =
+      normalizeSkillNames(payload.skills ?? []);
+
+    if (skillNames.length > maxSkillsPerJob) {
+      throw ApiError.badRequest(
+        `Một tin tuyển dụng không được có quá ${maxSkillsPerJob} kỹ năng.`,
+      );
+    }
+
+    const defaultApplicationDeadline =
+      new Date(
+        Date.now() +
+        defaultDeadlineDays *
+        24 *
+        60 *
+        60 *
+        1000,
+      ).toISOString();
+
+    const applicationDeadline =
+      normalizeDeadline(
+        payload.applicationDeadline,
+      ) ?? defaultApplicationDeadline;
     if (
       payload.salaryMin !== undefined &&
       payload.salaryMax !== undefined &&
@@ -144,17 +200,19 @@ class JobService {
       job_type: JOB_TYPE_MAP[payload.employmentType],
       experience_level: normalizeExperience(payload.experience),
       positions_available: payload.positionsAvailable ?? 1,
-      application_deadline: normalizeDeadline(payload.applicationDeadline),
+      application_deadline: applicationDeadline,
 
       // Trên giao diện gọi là "Chờ duyệt"
       // Dưới database lưu là DRAFT + is_approved = false
-      status: 'DRAFT',
-      is_approved: false,
+      status: requireApproval
+        ? 'DRAFT'
+        : 'OPEN',
+
+      is_approved: !requireApproval,
     };
 
     const createdJob = await JobRepository.createJob(jobPayload);
 
-    const skillNames = normalizeSkillNames(payload.skills ?? []);
     const skillRows = [];
 
     for (const skillName of skillNames) {
@@ -190,7 +248,28 @@ class JobService {
     ) {
       throw ApiError.badRequest('Lương tối thiểu phải nhỏ hơn hoặc bằng lương tối đa.');
     }
+    if (Array.isArray(payload.skills)) {
+      const maxSkillsPerJob =
+        await systemConfigurationService
+          .getConfigValue(
+            'MAX_SKILLS_PER_JOB',
+            30,
+          );
 
+      const normalizedSkills =
+        normalizeSkillNames(
+          payload.skills,
+        );
+
+      if (
+        normalizedSkills.length >
+        Number(maxSkillsPerJob)
+      ) {
+        throw ApiError.badRequest(
+          `Một tin tuyển dụng không được có quá ${maxSkillsPerJob} kỹ năng.`,
+        );
+      }
+    }
     let categoryId = payload.categoryId ?? existingJob.category_id ?? null;
 
     if (payload.category) {
