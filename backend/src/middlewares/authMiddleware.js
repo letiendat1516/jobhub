@@ -31,7 +31,13 @@ const authenticate = asyncHandler(async (req, _res, next) => {
     throw ApiError.unauthorized('Vui lòng đăng nhập để tiếp tục.');
   }
   const decoded = await AuthService.verifyAccessToken(token);
-  req.user = decoded;
+  const principal = await AuthService.requireActivePrincipal(decoded);
+  req.user = {
+    ...decoded,
+    ...principal,
+    sub: principal.id,
+    role: principal.role,
+  };
   return next();
 });
 

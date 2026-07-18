@@ -12,7 +12,7 @@ export default function redirectPathByRole(role) {
     case 'employer':
       return '/';
     case 'admin':
-      return '/';
+      return '/admin/users';
     case 'job_seeker':
     default:
       return '/';

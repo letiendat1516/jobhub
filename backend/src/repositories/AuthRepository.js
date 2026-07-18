@@ -181,7 +181,7 @@ class AuthRepository {
   static async findJobSeekerPublicById(id) {
     const { data, error } = await getClient()
       .from('job_seeker')
-      .select('job_seeker_id, email, full_name, headline, city, is_verified')
+      .select('job_seeker_id, email, full_name, headline, city, is_verified, is_active')
       .eq('job_seeker_id', id)
       .maybeSingle();
     if (error) return handleError(error, 'findJobSeekerPublicById');
@@ -192,11 +192,22 @@ class AuthRepository {
   static async findEmployerPublicById(id) {
     const { data, error } = await getClient()
       .from('employer')
-      .select('employer_id, email, company_name, website, city, is_verified')
+      .select('employer_id, email, company_name, website, city, is_verified, is_active')
       .eq('employer_id', id)
       .maybeSingle();
     if (error) return handleError(error, 'findEmployerPublicById');
     return data ? normalizePublic(data, ROLE.EMPLOYER) : null;
+  }
+
+  /** Lấy principal admin thực tế; admin không có trạng thái is_active trong schema hiện tại. */
+  static async findAdminPublicById(id) {
+    const { data, error } = await getClient()
+      .from('admin')
+      .select('admin_id, email, full_name, created_at')
+      .eq('admin_id', id)
+      .maybeSingle();
+    if (error) return handleError(error, 'findAdminPublicById');
+    return data ? normalizePublic({ ...data, is_active: true }, ROLE.ADMIN) : null;
   }
 }
 
@@ -207,6 +218,8 @@ const normalizePublic = (row, role) => ({
   email: row.email,
   name: row.full_name ?? row.company_name,
   is_verified: row.is_verified ?? false,
+  is_active: row.is_active ?? true,
+  ...(row.created_at ? { created_at: row.created_at } : {}),
   // các trường phụ (headline/city/website...) đi kèm nếu có
   ...(row.headline ? { headline: row.headline } : {}),
   ...(row.city ? { city: row.city } : {}),

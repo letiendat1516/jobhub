@@ -46,6 +46,16 @@ const getUserMenuItems = (role) => {
   if (role === 'admin') {
     return [
       {
+        label: 'Quản lý người dùng',
+        to: '/admin/users',
+        icon: 'users',
+      },
+      {
+        label: 'Quản lý nhà tuyển dụng',
+        to: '/admin/employers',
+        icon: 'briefcase',
+      },
+      {
         label: 'Duyệt tin tuyển dụng',
         to: '/admin/pending-jobs',
         icon: 'bookmark',

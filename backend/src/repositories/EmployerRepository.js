@@ -70,6 +70,14 @@ class EmployerRepository {
     return data;
   }
 
+  static async updateAccountStatus(id, isActive) {
+    return EmployerRepository.updateEmployer(id, { is_active: isActive });
+  }
+
+  static async updateVerification(id, isVerified) {
+    return EmployerRepository.updateEmployer(id, { is_verified: isVerified });
+  }
+
   static async listEmployers(query = {}) {
     const { keyword, city, page = 1, limit = 20 } = query;
 

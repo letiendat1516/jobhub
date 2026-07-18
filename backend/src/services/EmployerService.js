@@ -32,6 +32,18 @@ const mapProfilePayload = (payload) => {
 };
 
 class EmployerService {
+  static async setAccountActive(employerId, isActive) {
+    const existing = await EmployerRepository.findEmployerById(employerId);
+    if (!existing) throw ApiError.notFound('Không tìm thấy tài khoản nhà tuyển dụng.');
+    return EmployerRepository.updateAccountStatus(employerId, isActive);
+  }
+
+  static async setVerification(employerId, isVerified) {
+    const existing = await EmployerRepository.findEmployerById(employerId);
+    if (!existing) throw ApiError.notFound('Không tìm thấy nhà tuyển dụng.');
+    return EmployerRepository.updateVerification(employerId, isVerified);
+  }
+
   static async getProfile(employerId) {
     const employer = await EmployerRepository.findEmployerById(employerId);
 

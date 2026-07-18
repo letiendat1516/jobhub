@@ -27,6 +27,8 @@ import EmployerApplicationsPage, {
 import ResumePage from '../pages/ResumePage.jsx';
 import CompanyDetailPage from '../pages/CompanyDetailPage.jsx';
 import AdminSystemConfigurationPage from '../pages/AdminSystemConfigurationPage.jsx';
+import AdminUsersPage from '../pages/AdminUsersPage.jsx';
+import AdminEmployersPage from '../pages/AdminEmployersPage.jsx';
 /**
  * AppRoutes — application route table.
  *
@@ -51,7 +53,14 @@ export default function AppRoutes() {
           <Route path="/viec-lam/:id" element={<JobDetailPage />} />
           <Route path="/cong-ty/:id" element={<CompanyDetailPage />} />
           <Route path="/ai-logs" element={<AiLogsPage />} />
-          <Route path="/admin/ai-stats" element={<AiStatsPage />} />
+          <Route
+            path="/admin/ai-stats"
+            element={
+              <RoleGuard roles={['admin']}>
+                <AiStatsPage />
+              </RoleGuard>
+            }
+          />
           <Route path="/de-xuat" element={<RecommendedPage />} />
           <Route path="/de-xuat/:sessionId" element={<SessionDetailPage />} />
           <Route
@@ -125,6 +134,22 @@ export default function AppRoutes() {
           />
 
           {/* Admin pages */}
+          <Route
+            path="/admin/users"
+            element={
+              <RoleGuard roles={['admin']}>
+                <AdminUsersPage />
+              </RoleGuard>
+            }
+          />
+          <Route
+            path="/admin/employers"
+            element={
+              <RoleGuard roles={['admin']}>
+                <AdminEmployersPage />
+              </RoleGuard>
+            }
+          />
           <Route
             path="/admin/pending-jobs"
             element={

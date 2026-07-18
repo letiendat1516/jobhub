@@ -24,6 +24,17 @@ class ResumeController {
     const resume = await ResumeService.getResume(req.user.sub, req.params.id);
     return res.download(resume.file_path, resume.file_name);
   }
+
+  /* --------------------------- UC-AI-01 --------------------------- */
+  static async analyzeResume(req, res) {
+    return ApiResponse.ok(
+      res,
+      await ResumeService.analyzeResume(req.user.sub, req.params.id),
+    );
+  }
+  static async getAnalysis(req, res) {
+    return ApiResponse.ok(res, await ResumeService.getAnalysis(req.user.sub, req.params.id));
+  }
 }
 
 export default ResumeController;
