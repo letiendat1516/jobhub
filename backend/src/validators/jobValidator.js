@@ -88,7 +88,6 @@ const jobBase = z.object({
 
   skills: z
     .array(skillName)
-    .max(30, 'Một tin tuyển dụng không nên có quá 30 kỹ năng.')
     .optional()
     .transform((skills) => {
       if (!skills) return skills;

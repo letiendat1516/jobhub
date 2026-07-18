@@ -109,6 +109,12 @@ export default function JobDetailPage() {
       </div>
     );
   }
+  const companyId =
+    job.company?.id ??
+    job.company?.employer_id ??
+    job.employerId ??
+    job.employer_id ??
+    null;
 
   // job.detail is the structured JSON object
   const d = job.detail || {};
@@ -153,12 +159,18 @@ export default function JobDetailPage() {
                   <h1 className="text-xl font-bold leading-tight text-ink sm:text-2xl">
                     {job.title}
                   </h1>
-                  <Link
-                    to="#"
-                    className="mt-1.5 block truncate text-sm font-medium text-primary hover:underline sm:text-base"
-                  >
-                    {job.company.name}
-                  </Link>
+                  {companyId ? (
+                    <Link
+                      to={`/cong-ty/${companyId}`}
+                      className="mt-1.5 block truncate text-sm font-medium text-primary hover:underline sm:text-base"
+                    >
+                      {job.company.name}
+                    </Link>
+                  ) : (
+                    <span className="mt-1.5 block truncate text-sm font-medium text-primary sm:text-base">
+                      {job.company.name}
+                    </span>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {job.hot && (
                       <span className="chip bg-secondary-50 text-secondary">Nổi bật</span>

@@ -226,22 +226,32 @@ function getSkillNames(job) {
     .map((item) => item?.skill?.skill_name || item?.skill_name)
     .filter(Boolean);
 }
-
 export function normalizeApiJob(job) {
   const companyName =
     job?.employer?.company_name ||
     job?.company_name ||
     'Công ty chưa cập nhật';
 
-  const experienceEnum = job?.experience_level || 'INTERN';
+  const experienceEnum =
+    job?.experience_level || 'INTERN';
 
   const experienceLabel =
-    EXPERIENCE_LABELS[experienceEnum] || 'Không yêu cầu';
+    EXPERIENCE_LABELS[experienceEnum] ||
+    'Không yêu cầu';
 
-  const postedText = getPostedText(job?.created_at);
+  const postedText = getPostedText(
+    job?.created_at,
+  );
 
   return {
-    id: job?.job_id ?? job?.id,
+    /*
+     * ID tin tuyển dụng.
+     */
+    id:
+      job?.job_id ??
+      job?.id ??
+      null,
+
     source: 'database',
 
     title:
@@ -249,7 +259,28 @@ export function normalizeApiJob(job) {
       job?.title ||
       'Tin tuyển dụng chưa có tiêu đề',
 
-    company: createCompanyDisplay(companyName),
+    /*
+     * Thông tin công ty phải nằm chung
+     * trong object company.
+     */
+    company: {
+      ...createCompanyDisplay(companyName),
+
+      id:
+        job?.employer?.employer_id ??
+        job?.employer?.id ??
+        job?.employer_id ??
+        null,
+
+      city:
+        job?.employer?.city ||
+        job?.city ||
+        '',
+
+      website:
+        job?.employer?.website ||
+        '',
+    },
 
     category:
       job?.category?.name ||
@@ -257,13 +288,26 @@ export function normalizeApiJob(job) {
       'Ngành nghề khác',
 
     salaryLabel: formatSalary(
-      job?.salary_min ?? job?.salaryMin,
-      job?.salary_max ?? job?.salaryMax,
-      job?.salary_currency || job?.currency || 'VND',
+      job?.salary_min ??
+        job?.salaryMin,
+
+      job?.salary_max ??
+        job?.salaryMax,
+
+      job?.salary_currency ||
+        job?.currency ||
+        'VND',
     ),
 
-    salaryMin: job?.salary_min ?? job?.salaryMin ?? null,
-    salaryMax: job?.salary_max ?? job?.salaryMax ?? null,
+    salaryMin:
+      job?.salary_min ??
+      job?.salaryMin ??
+      null,
+
+    salaryMax:
+      job?.salary_max ??
+      job?.salaryMax ??
+      null,
 
     negotiable:
       !job?.salary_min &&
@@ -297,7 +341,9 @@ export function normalizeApiJob(job) {
 
     tags: getSkillNames(job),
 
-    postedAgo: postedText.replace(/^Đăng\s*/, ''),
+    postedAgo:
+      postedText.replace(/^Đăng\s*/, ''),
+
     postedText,
 
     detail: parseJobDetail(
@@ -305,24 +351,34 @@ export function normalizeApiJob(job) {
       experienceLabel,
     ),
 
-    hot: Number(job?.salary_max || 0) >= 50_000_000,
+    hot:
+      Number(
+        job?.salary_max ||
+          job?.salaryMax ||
+          0,
+      ) >= 50_000_000,
 
     applicationDeadline:
-      job?.application_deadline || null,
+      job?.application_deadline ||
+      null,
 
     deadlineLabel: formatDate(
       job?.application_deadline,
     ),
 
-    deadlineFullLabel: getDeadlineFullLabel(
-      job?.application_deadline,
-    ),
+    deadlineFullLabel:
+      getDeadlineFullLabel(
+        job?.application_deadline,
+      ),
 
     applicationsLabel:
       `${job?.applications_count || 0} người`,
 
     status: job?.status,
-    isApproved: Boolean(job?.is_approved),
+
+    isApproved: Boolean(
+      job?.is_approved,
+    ),
   };
 }
 

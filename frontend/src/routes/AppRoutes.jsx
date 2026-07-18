@@ -25,7 +25,8 @@ import EmployerApplicationsPage, {
   EmployerApplicationReviewPage,
 } from '../pages/EmployerApplicationsPage.jsx';
 import ResumePage from '../pages/ResumePage.jsx';
-
+import CompanyDetailPage from '../pages/CompanyDetailPage.jsx';
+import AdminSystemConfigurationPage from '../pages/AdminSystemConfigurationPage.jsx';
 /**
  * AppRoutes — application route table.
  *
@@ -48,6 +49,7 @@ export default function AppRoutes() {
           <Route path="/" element={<HomePage />} />
           <Route path="/viec-lam" element={<JobsPage />} />
           <Route path="/viec-lam/:id" element={<JobDetailPage />} />
+          <Route path="/cong-ty/:id" element={<CompanyDetailPage />} />
           <Route path="/ai-logs" element={<AiLogsPage />} />
           <Route path="/admin/ai-stats" element={<AiStatsPage />} />
           <Route path="/de-xuat" element={<RecommendedPage />} />
@@ -140,7 +142,14 @@ export default function AppRoutes() {
               </RoleGuard>
             }
           />
-
+          <Route
+            path="/admin/system-configurations"
+            element={
+              <RoleGuard roles={['admin']}>
+                <AdminSystemConfigurationPage />
+              </RoleGuard>
+            }
+            />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
