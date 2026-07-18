@@ -29,4 +29,16 @@ router.delete(
   asyncHandler(ResumeController.deleteResume),
 );
 
+// UC-AI-01: phân tích CV bằng AI
+router.post(
+  '/:id/analyze',
+  validateRequest(applicationValidator.params, 'params'),
+  asyncHandler(ResumeController.analyzeResume),
+);
+router.get(
+  '/:id/analysis',
+  validateRequest(applicationValidator.params, 'params'),
+  asyncHandler(ResumeController.getAnalysis),
+);
+
 export default router;
