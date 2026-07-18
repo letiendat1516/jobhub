@@ -13,7 +13,7 @@ import jobSeekerRoutes from './jobSeekerRoutes.js';
 import resumeRoutes from './resumeRoutes.js';
 import applicationRoutes from './applicationRoutes.js';
 import recommendationRoutes from './recommendationRoutes.js';
-
+import systemConfigurationRoutes from './systemConfigurationRoutes.js';
 const router = Router();
 
 router.get('/', (_req, res) => {
@@ -30,6 +30,7 @@ router.get('/', (_req, res) => {
         'resumes',
         'applications',
         'recommendations',
+        'system-configurations'
       ],
     },
   });
@@ -42,5 +43,6 @@ router.use('/job-seekers', jobSeekerRoutes);
 router.use('/resumes', resumeRoutes);
 router.use('/applications', applicationRoutes);
 router.use('/recommendations', recommendationRoutes);
+router.use('/system-configurations', systemConfigurationRoutes);
 
 export default router;

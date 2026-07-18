@@ -2,8 +2,9 @@
  * Centralized error handler
  * ------------------------------------------------------------------
  * Mounted last in the Express pipeline. Converts every thrown error
- * into a consistent JSON response. Internal details (stack traces,
- * internal messages) are never exposed to the client.
+ * into a consistent JSON response.
+ *
+ * Internal details and stack traces are hidden in production.
  *
  * Contract:
  * {
@@ -14,10 +15,20 @@
 import { ZodError } from 'zod';
 import config from '../config/index.js';
 
-const errorHandler = (err, req, res, _next) => {
+const errorHandler = (err, req, res, next) => {
+  /*
+   * Nếu response đã được gửi một phần, chuyển lỗi cho Express
+   * thay vì cố gắng gửi thêm response lần thứ hai.
+   */
+  if (res.headersSent) {
+    return next(err);
+  }
+
   req.log?.error?.({ err }, 'Request failed');
 
-  // Validation errors from Zod (see middlewares/validateRequest.js)
+  /*
+   * Trường hợp controller hoặc middleware ném trực tiếp ZodError.
+   */
   if (err instanceof ZodError) {
     return res.status(400).json({
       success: false,
@@ -29,18 +40,32 @@ const errorHandler = (err, req, res, _next) => {
     });
   }
 
-  const statusCode = err.statusCode && Number.isInteger(err.statusCode)
-    ? err.statusCode
-    : 500;
+  const statusCode =
+    Number.isInteger(err.statusCode)
+      ? err.statusCode
+      : 500;
 
   const isOperational = err.isOperational === true;
+
+  const message =
+    isOperational || statusCode < 500
+      ? err.message
+      : 'Lỗi hệ thống. Vui lòng thử lại sau.';
 
   return res.status(statusCode).json({
     success: false,
     error: {
-      message: isOperational || statusCode < 500
-        ? err.message
-        : 'Lỗi hệ thống. Vui lòng thử lại sau.',
+      message,
+
+      /*
+       * Trả mã lỗi và nguyên nhân chi tiết về frontend.
+       */
+      ...(err.code ? { code: err.code } : {}),
+      ...(err.details ? { details: err.details } : {}),
+
+      /*
+       * Chỉ trả stack trace trong môi trường phát triển.
+       */
       ...(config.isProduction ? {} : { stack: err.stack }),
     },
   });

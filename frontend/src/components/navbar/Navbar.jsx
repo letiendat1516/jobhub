@@ -65,6 +65,11 @@ const getUserMenuItems = (role) => {
         to: '/employer/applications',
         icon: 'users',
       },
+      {
+        label: 'Cấu hình hệ thống',
+        to: '/admin/system-configurations',
+        icon: 'settings',
+      },
     ];
   }
 
