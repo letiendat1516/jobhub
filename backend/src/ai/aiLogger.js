@@ -57,13 +57,21 @@ export async function logAiCall({
   const logId = buildLogId();
   const timestamp = new Date().toISOString();
 
+  // Truncate large text fields in the file log to reduce PII stored on disk.
+  // The DB stores the full text; files are for quick offline inspection only.
+  const MAX_TEXT_LEN = 2000;
+  const truncate = (str) =>
+    (str || '').length > MAX_TEXT_LEN
+      ? (str || '').slice(0, MAX_TEXT_LEN) + '\n…[truncated for log file]'
+      : (str || '');
+
   const entry = {
     log_id: logId,
     timestamp,
     task,
     model,
-    prompt,
-    response,
+    prompt: truncate(prompt),
+    response: truncate(response),
     processing_time_ms: processingTimeMs,
     tokens_in: tokensIn,
     tokens_out: tokensOut,
@@ -73,6 +81,7 @@ export async function logAiCall({
   };
 
   // Sanitize: PostgreSQL không chấp nhận \u0000 (null byte) trong text
+  // eslint-disable-next-line no-control-regex
   const sanitize = (str) => (str || '').replace(/\u0000/g, '').replace(/\0/g, '');
   const cleanPrompt = sanitize(prompt);
   const cleanResponse = sanitize(response);
@@ -99,7 +108,7 @@ export async function logAiCall({
           { err: dbErr, task, code: dbErr.code },
           '❌ ai_matching_log DB insert FAILED — check if Migration 002 was run (DROP NOT NULL on job_seeker_id)',
         );
-        console.warn('[aiLogger] DB insert failed:', dbErr.message, '(code:', dbErr.code + ')');
+        logger.warn({ task, code: dbErr.code }, '[aiLogger] DB insert failed');
       } else {
         logger.info({ task }, '✓ ai_matching_log DB insert OK');
       }

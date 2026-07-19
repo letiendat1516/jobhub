@@ -108,13 +108,24 @@ export default function JobsPage() {
         setJobsLoading(true);
         setJobsError('');
 
-        const apiJobs = await jobService.searchJobs({
-          page: 1,
-          limit: 100,
-        });
+        // Fetch ALL approved jobs across pages. Filter sidebar counts,
+        // AI matching và sort đều chạy client-side trên toàn bộ tập — nếu
+        // chỉ load 1 page thì user không thấy đủ job (vd 9850 job đã seed).
+        // Backend cap = MAX_LIMIT (1000) — dừng khi 1 page trả < LIMIT.
+        const LIMIT = 1000;
+        const allApiJobs = [];
+        let p = 1;
+        for (;;) {
+          const batch = await jobService.searchJobs({ page: p, limit: LIMIT });
+          if (!Array.isArray(batch) || batch.length === 0) break;
+          allApiJobs.push(...batch);
+          if (batch.length < LIMIT) break; // trang cuối
+          p += 1;
+          if (p > 50) break; // safety cap (~50k job)
+        }
 
         if (!cancelled) {
-          setJobs(mergeJobs(mockJobs, Array.isArray(apiJobs) ? apiJobs : []));
+          setJobs(mergeJobs(mockJobs, allApiJobs));
         }
       } catch (err) {
         if (!cancelled) {

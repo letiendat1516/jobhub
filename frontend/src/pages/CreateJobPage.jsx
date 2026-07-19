@@ -164,16 +164,15 @@ export default function CreateJobPage() {
         setCatalogLoading(true);
         setError(null);
 
-        const [
-          categoryData,
-          skillData,
-          configurationData,
-        ] = await Promise.all([
+        // allSettled: nếu 1 nguồn fail (vd config 403) không làm hỏng cả form.
+        const [catRes, skillRes, cfgRes] = await Promise.allSettled([
           jobService.listCategories(),
           jobService.listSkills(),
-          systemConfigurationService
-            .getAllConfigurations(),
+          systemConfigurationService.getAllConfigurations(),
         ]);
+        const categoryData = catRes.status === 'fulfilled' ? catRes.value : [];
+        const skillData = skillRes.status === 'fulfilled' ? skillRes.value : [];
+        const configurationData = cfgRes.status === 'fulfilled' ? cfgRes.value : [];
         const categoryList = Array.isArray(categoryData)
           ? categoryData
           : Array.isArray(categoryData?.data)
@@ -277,6 +276,55 @@ export default function CreateJobPage() {
       ),
     }));
   };
+
+  /** Thêm kỹ năng tuỳ ý (tag "Khác") — không cần có sẵn trong danh sách. */
+  const addCustomSkill = (rawName) => {
+    const name = (rawName || '').trim();
+    if (!name) return;
+    const lower = name.toLocaleLowerCase('vi');
+    const exists = form.skills.some(
+      (s) => s.toLocaleLowerCase('vi') === lower,
+    );
+    if (exists) {
+      setSkillSearch('');
+      return;
+    }
+    if (form.skills.length >= maxSkillsPerJob) {
+      setError({
+        title: 'Lỗi hệ thống',
+        message: 'Không thể chọn thêm kỹ năng.',
+        reasons: [
+          `Một tin tuyển dụng không được có quá ${maxSkillsPerJob} kỹ năng.`,
+        ],
+      });
+      return;
+    }
+    setError(null);
+    setForm((previous) => ({
+      ...previous,
+      skills: [...previous.skills, name],
+    }));
+    setSkillSearch('');
+  };
+
+  /**
+   * Đề xuất thêm tag "Khác" khi nội dung ô tìm KHÔNG khớp chính xác
+   * với kỹ năng nào trong danh sách và chưa được chọn.
+   */
+  const customSkillCandidate = useMemo(() => {
+    const text = skillSearch.trim();
+    if (!text) return null;
+    const lower = text.toLocaleLowerCase('vi');
+    const inOptions = skillOptions.some(
+      (s) => getSkillName(s).toLocaleLowerCase('vi') === lower,
+    );
+    if (inOptions) return null;
+    const inSelected = form.skills.some(
+      (s) => s.toLocaleLowerCase('vi') === lower,
+    );
+    if (inSelected) return null;
+    return text;
+  }, [skillSearch, skillOptions, form.skills]);
 
   const filteredSkills = useMemo(() => {
     const keyword = skillSearch
@@ -579,7 +627,15 @@ export default function CreateJobPage() {
             onChange={(event) =>
               setSkillSearch(event.target.value)
             }
-            placeholder="Tìm kỹ năng, ví dụ: React"
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                if (customSkillCandidate) {
+                  addCustomSkill(customSkillCandidate);
+                }
+              }
+            }}
+            placeholder="Tìm kỹ năng, hoặc gõ kỹ năng mới rồi Enter để thêm"
           />
 
           {/* Danh sách kỹ năng để chọn */}
@@ -590,8 +646,30 @@ export default function CreateJobPage() {
               </p>
             ) : null}
 
+            {!catalogLoading && customSkillCandidate ? (
+              <button
+                type="button"
+                onClick={() =>
+                  addCustomSkill(customSkillCandidate)
+                }
+                className="flex w-full items-center gap-3 border-b border-amber-200 bg-amber-50 px-4 py-3 text-left hover:bg-amber-100"
+              >
+                <span className="text-base font-bold text-amber-600">
+                  ＋
+                </span>
+                <span className="text-sm text-slate-700">
+                  Thêm{' '}
+                  <strong className="text-slate-900">
+                    "{customSkillCandidate}"
+                  </strong>{' '}
+                  (kỹ năng khác)
+                </span>
+              </button>
+            ) : null}
+
             {!catalogLoading &&
-              filteredSkills.length === 0 ? (
+              filteredSkills.length === 0 &&
+              !customSkillCandidate ? (
               <p className="p-4 text-sm text-slate-500">
                 Không tìm thấy kỹ năng phù hợp.
               </p>
@@ -631,7 +709,9 @@ export default function CreateJobPage() {
           </div>
 
           <p className="mt-2 text-xs text-slate-500">
-            Đã chọn {form.skills.length}/{maxSkillsPerJob} kỹ năng.
+            Đã chọn {form.skills.length}/{maxSkillsPerJob} kỹ năng. Nếu không
+            thấy kỹ năng cần, gõ tên rồi Enter (hoặc bấm "Thêm") để tự tạo tag
+            khác.
           </p>
         </div>
 

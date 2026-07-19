@@ -24,6 +24,12 @@ const handleError = (error, context) => {
   throw ApiError.internal('Lỗi truy vấn database.');
 };
 
+/** Escape special PostgREST .or() filter characters. */
+const escapeFilterValue = (value) =>
+  String(value).replace(/[,()]/g, ' ').trim();
+
+const MAX_LIMIT = 100;
+
 const EMPLOYER_SELECT = `
   employer_id,
   company_name,
@@ -81,8 +87,10 @@ class EmployerRepository {
   static async listEmployers(query = {}) {
     const { keyword, city, page = 1, limit = 20 } = query;
 
-    const from = (Number(page) - 1) * Number(limit);
-    const to = from + Number(limit) - 1;
+    const safePage = Math.max(1, Number(page) || 1);
+    const safeLimit = Math.min(MAX_LIMIT, Math.max(1, Number(limit) || 20));
+    const from = (safePage - 1) * safeLimit;
+    const to = from + safeLimit - 1;
 
     let dbQuery = getClient()
       .from('employer')
@@ -92,8 +100,9 @@ class EmployerRepository {
       .range(from, to);
 
     if (keyword) {
+      const safe = escapeFilterValue(keyword);
       dbQuery = dbQuery.or(
-        `company_name.ilike.%${keyword}%,company_description.ilike.%${keyword}%`,
+        `company_name.ilike.%${safe}%,company_description.ilike.%${safe}%`,
       );
     }
 
@@ -110,8 +119,8 @@ class EmployerRepository {
     return {
       items: data ?? [],
       total: count ?? 0,
-      page: Number(page),
-      limit: Number(limit),
+      page: safePage,
+      limit: safeLimit,
     };
   }
 }

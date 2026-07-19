@@ -1,9 +1,12 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { Link } from 'react-router-dom';
 import Icon from '../ui/Icon.jsx';
 import { cn } from '../../utils/cn.js';
 import recommendationService from '../../services/recommendationService.js';
+import resumeService from '../../services/resumeService.js';
+import { useAuth } from '../../context/AuthContext.jsx';
 
 // Configure PDF.js worker (Vite serves it as a separate chunk)
 pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
@@ -22,83 +25,9 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = workerUrl;
  *   onScored: (scores) => void   // scores: { [jobId]: { match_score, reason, missing_skills } }
  */
 
-// Mock pre-extracted CVs (Phase 9 will fetch real ones from the API).
-const PRE_EXTRACTED_CVS = [
-  {
-    id: 'cv-it',
-    name: 'CV IT Software Engineer (đã trích xuất)',
-    cv: {
-      skills: ['JavaScript', 'ReactJS', 'Node.js', 'PostgreSQL', 'Git', 'Docker', 'REST API'],
-      soft_skills: ['Teamwork', 'Problem-solving', 'Agile/Scrum', 'Communication'],
-      experience_years: 3,
-      education_level: 'Bachelor',
-      languages: ['English (intermediate)', 'Vietnamese (native)'],
-      certifications: ['AWS Cloud Practitioner'],
-      summary:
-        'Software engineer with 3 years of experience in full-stack web development. Strong problem-solving skills, comfortable working in Agile teams. Looking for a challenging role where I can grow technically and contribute to impactful projects.',
-      work_experience: [
-        {
-          company: 'FPT Software',
-          position: 'Software Engineer',
-          start_date: '2023-03',
-          end_date: null,
-          description:
-            'Developed and maintained React+Node.js web applications for banking clients. Collaborated in a Scrum team of 8. Improved API performance by 30%.',
-        },
-        {
-          company: 'Startup XYZ',
-          position: 'Junior Developer',
-          start_date: '2022-01',
-          end_date: '2023-01',
-          description:
-            'Built internal tools using JavaScript and PostgreSQL. Worked closely with product team to deliver features on tight deadlines.',
-        },
-      ],
-    },
-  },
-  {
-    id: 'cv-sales',
-    name: 'CV Sales / Kinh doanh (đã trích xuất)',
-    cv: {
-      skills: [
-        'Sales',
-        'Telesales',
-        'Kinh doanh B2B',
-        'Excel',
-        'CRM (Salesforce)',
-        'Đàm phán',
-        'Chốt sale',
-      ],
-      soft_skills: ['Communication', 'Persuasion', 'Teamwork', 'Time management', 'Adaptability'],
-      experience_years: 2,
-      education_level: 'Bachelor',
-      languages: ['English (basic)', 'Vietnamese (native)'],
-      certifications: [],
-      summary:
-        'Dynamic sales professional with 2 years of B2B sales experience. Consistently exceeded quarterly targets by 120%. Strong negotiator, excellent communicator. Seeking a senior sales role to leverage my skills in a larger market.',
-      work_experience: [
-        {
-          company: 'CÔNG TY TNHH ABC',
-          position: 'Nhân Viên Kinh Doanh',
-          start_date: '2024-03',
-          end_date: null,
-          description:
-            'Phụ trách mảng B2B, tìm kiếm khách hàng doanh nghiệp, tư vấn giải pháp phần mềm. Đạt 120% KPI quý liên tiếp. Quản lý pipeline 50+ khách hàng.',
-        },
-        {
-          company: 'CÔNG TY CỔ PHẦN XYZ',
-          position: 'Thực Tập Sinh Sales',
-          start_date: '2023-06',
-          end_date: '2024-02',
-          description:
-            'Hỗ trợ team sales gọi điện tư vấn khách hàng, cập nhật CRM, lập báo cáo tuần. Được đào tạo kỹ năng đàm phán và chốt sale.',
-        },
-      ],
-    },
-  },
-];
 
 export default function AIScoreModal({ jobs, isOpen, onClose, onScored }) {
+  const { isAuthenticated } = useAuth();
   const [mode, setMode] = useState('preset'); // 'preset' | 'upload'
   const [selectedCvId, setSelectedCvId] = useState('');
   const [uploadedText, setUploadedText] = useState('');
@@ -108,6 +37,56 @@ export default function AIScoreModal({ jobs, isOpen, onClose, onScored }) {
   const [error, setError] = useState(null);
   const [scores, setScores] = useState(null);
   const fileRef = useRef(null);
+
+  // Real extracted CVs fetched from the API (logged-in users only)
+  const [userCvs, setUserCvs] = useState([]);
+  const [cvsLoading, setCvsLoading] = useState(false);
+
+  // Fetch user's CVs + their analyses whenever the modal opens
+  useEffect(() => {
+    if (!isOpen || !isAuthenticated) {
+      setUserCvs([]);
+      return;
+    }
+    setCvsLoading(true);
+    resumeService
+      .getMyResume()
+      .then(async (r) => {
+        const cvList = r.data ?? [];
+        const withAnalyses = await Promise.all(
+          cvList.map(async (cv) => {
+            try {
+              const aRes = await resumeService.getAnalysis(cv.resume_id);
+              const analysis = aRes.data;
+              if (!analysis) return null;
+              return {
+                id: `user-cv-${cv.resume_id}`,
+                resumeId: cv.resume_id,
+                name: cv.title || cv.file_name,
+                isUserCv: true,
+                cv: {
+                  skills: analysis.extracted_skills?.skills ?? [],
+                  soft_skills: analysis.extracted_skills?.soft_skills ?? [],
+                  experience_years: analysis.total_experience_years ?? 0,
+                  education_level: analysis.education_level ?? 'Bachelor',
+                  languages: analysis.extracted_skills?.languages ?? [],
+                  certifications: analysis.extracted_skills?.certifications ?? [],
+                  summary: analysis.summary ?? '',
+                  work_experience: analysis.extracted_skills?.work_experience ?? [],
+                },
+              };
+            } catch {
+              return null;
+            }
+          }),
+        );
+        setUserCvs(withAnalyses.filter(Boolean));
+      })
+      .catch(() => {})
+      .finally(() => setCvsLoading(false));
+  }, [isOpen, isAuthenticated]);
+
+  const allPresetCvs = userCvs;
 
   if (!isOpen) return null;
 
@@ -201,7 +180,7 @@ export default function AIScoreModal({ jobs, isOpen, onClose, onScored }) {
       let cv;
       let cvName = '';
       if (mode === 'preset') {
-        const found = PRE_EXTRACTED_CVS.find((c) => c.id === selectedCvId);
+        const found = allPresetCvs.find((c) => c.id === selectedCvId);
         if (!found) throw new Error('Vui lòng chọn CV');
         cv = found.cv;
         cvName = found.name;
@@ -369,13 +348,13 @@ export default function AIScoreModal({ jobs, isOpen, onClose, onScored }) {
                     for (const [jid, s] of Object.entries(scores)) {
                       flatScores[jid] = s.ai || s.sql;
                     }
-                    recommendationService
-                      .saveScores({
-                        cvId: selectedCvId || 'upload',
-                        cvName:
-                          PRE_EXTRACTED_CVS.find((c) => c.id === selectedCvId)?.name ||
-                          fileName ||
-                          'CV',
+                        recommendationService
+                          .saveScores({
+                            cvId: selectedCvId || 'upload',
+                            cvName:
+                              allPresetCvs.find((c) => c.id === selectedCvId)?.name ||
+                              fileName ||
+                              'CV',
                         scores: flatScores,
                         jobs: jobs.map((j) => ({ id: j.id, title: j.title })),
                       })
@@ -450,31 +429,70 @@ export default function AIScoreModal({ jobs, isOpen, onClose, onScored }) {
 
               {mode === 'preset' ? (
                 <div className="space-y-2">
-                  {PRE_EXTRACTED_CVS.map((c) => (
-                    <label
-                      key={c.id}
-                      className={cn(
-                        'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors',
-                        selectedCvId === c.id
-                          ? 'border-primary bg-primary-50'
-                          : 'border-slate-200 hover:border-primary/50',
-                      )}
-                    >
-                      <input
-                        type="radio"
-                        name="presetCv"
-                        checked={selectedCvId === c.id}
-                        onChange={() => setSelectedCvId(c.id)}
-                        className="h-4 w-4 text-primary"
-                      />
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-ink">{c.name}</p>
-                        <p className="text-xs text-ink-muted">
-                          Skills: {c.cv.skills.join(', ')} · {c.cv.experience_years} năm KN
-                        </p>
-                      </div>
-                    </label>
-                  ))}
+                  {/* Loading state */}
+                  {cvsLoading && (
+                    <div className="flex items-center gap-2 text-xs text-ink-muted py-2">
+                      <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                      Đang tải CV đã trích xuất...
+                    </div>
+                  )}
+
+                  {/* User's real extracted CVs */}
+                  {!cvsLoading && isAuthenticated && userCvs.length > 0 && (
+                    <>
+                      <p className="text-[11px] font-semibold text-ink-muted uppercase tracking-wide">
+                        CV của tôi (đã trích xuất)
+                      </p>
+                      {userCvs.map((c) => (
+                        <label
+                          key={c.id}
+                          className={cn(
+                            'flex cursor-pointer items-center gap-3 rounded-xl border p-3 transition-colors',
+                            selectedCvId === c.id
+                              ? 'border-primary bg-primary-50'
+                              : 'border-slate-200 hover:border-primary/50',
+                          )}
+                        >
+                          <input
+                            type="radio"
+                            name="presetCv"
+                            checked={selectedCvId === c.id}
+                            onChange={() => setSelectedCvId(c.id)}
+                            className="h-4 w-4 text-primary"
+                          />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <p className="text-sm font-semibold text-ink truncate">{c.name}</p>
+                              <span className="shrink-0 rounded-full bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                Của tôi
+                              </span>
+                            </div>
+                            <p className="text-xs text-ink-muted truncate">
+                              {c.cv.skills.slice(0, 5).join(', ')}
+                              {c.cv.skills.length > 5 ? ` +${c.cv.skills.length - 5}` : ''} ·{' '}
+                              {c.cv.experience_years} năm KN
+                            </p>
+                          </div>
+                        </label>
+                      ))}
+                    </>
+                  )}
+
+                  {/* Prompt to extract if no analyzed CVs */}
+                  {!cvsLoading && isAuthenticated && userCvs.length === 0 && (
+                    <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-xs text-ink-muted">
+                      <p className="font-medium text-ink">Bạn chưa trích xuất CV nào.</p>
+                      <p className="mt-0.5">
+                        Vào{' '}
+                        <Link to="/ho-so/cv" className="font-semibold text-primary hover:underline">
+                          Hồ sơ &amp; CV
+                        </Link>{' '}
+                        → bấm <span className="font-semibold">✦ Trích xuất CV</span> để AI phân tích
+                        CV của bạn.
+                      </p>
+                    </div>
+                  )}
+
                 </div>
               ) : (
                 <div>

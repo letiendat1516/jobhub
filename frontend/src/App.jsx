@@ -1,15 +1,18 @@
 import { AuthProvider } from './context/AuthContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
+import ErrorBoundary from './components/ErrorBoundary.jsx';
 
 /**
  * App — top-level component.
- * AuthProvider bọc toàn app để useAuth() truy cập được ở mọi nơi
- * (Navbar, các route bảo vệ, ...).
+ * ErrorBoundary wraps the whole tree so any uncaught render error shows
+ * a safe fallback instead of a blank white screen.
  */
 export default function App() {
   return (
-    <AuthProvider>
-      <AppRoutes />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

@@ -6,6 +6,10 @@ import { useAuth } from '../context/AuthContext.jsx';
 
 const getJobId = (job) => job.job_id || job.id;
 
+const isJobOpen = (job) => job.status === 'OPEN' && job.is_approved === true;
+const isJobClosedApproved = (job) =>
+    job.status === 'CLOSED' && job.is_approved === true;
+
 const getJobTitle = (job) => job.job_title || job.title || 'Tin tuyển dụng chưa có tiêu đề';
 
 const getWorkModeLabel = (value) => {
@@ -146,6 +150,18 @@ export default function EmployerJobsPage() {
         }
     };
 
+    const reopenJob = async (jobId) => {
+        const ok = window.confirm('Mở lại tin tuyển dụng này để ứng viên có thể thấy & ứng tuyển?');
+        if (!ok) return;
+
+        try {
+            await jobService.reopenJob(jobId);
+            await loadJobs();
+        } catch (err) {
+            alert(err.response?.data?.message || err.message || 'Không thể mở lại tin tuyển dụng.');
+        }
+    };
+
     const deleteJob = async (jobId) => {
         const ok = window.confirm('Bạn có chắc muốn xoá tin tuyển dụng này không?');
         if (!ok) return;
@@ -263,13 +279,25 @@ export default function EmployerJobsPage() {
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
-                                    <button
-                                        type="button"
-                                        onClick={() => closeJob(jobId)}
-                                        className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-50"
-                                    >
-                                        Đóng tin
-                                    </button>
+                                    {isJobOpen(job) ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => closeJob(jobId)}
+                                            className="rounded-lg border px-4 py-2 text-sm font-semibold hover:bg-slate-50"
+                                        >
+                                            Đóng tin
+                                        </button>
+                                    ) : null}
+
+                                    {isJobClosedApproved(job) ? (
+                                        <button
+                                            type="button"
+                                            onClick={() => reopenJob(jobId)}
+                                            className="rounded-lg border border-green-200 bg-green-50 px-4 py-2 text-sm font-semibold text-green-700 hover:bg-green-100"
+                                        >
+                                            Mở tin
+                                        </button>
+                                    ) : null}
 
                                     <button
                                         type="button"

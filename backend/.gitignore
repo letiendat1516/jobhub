@@ -21,3 +21,6 @@ npm-debug.log*
 
 # Pino logs
 logs/
+
+# Runtime overrides (DeepSeek API key override set từ UI)
+.runtime/

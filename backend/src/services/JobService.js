@@ -65,6 +65,7 @@ const ensureEmployerOwnsJob = (job, employerId) => {
 
 class JobService {
   static async searchJobs(filters = {}) {
+    const MAX_LIMIT = 1000;
     return JobRepository.searchJobs({
       keyword: filters.keyword,
       city: filters.city,
@@ -74,8 +75,9 @@ class JobService {
       categoryId: filters.categoryId,
       salaryMin: filters.salaryMin,
       salaryMax: filters.salaryMax,
-      page: filters.page || 1,
-      limit: filters.limit || 20,
+      page: Math.max(1, Number(filters.page) || 1),
+      // Clamp limit to [1, MAX_LIMIT] to prevent unbounded queries.
+      limit: Math.min(MAX_LIMIT, Math.max(1, Number(filters.limit) || 20)),
     });
   }
 
@@ -213,24 +215,15 @@ class JobService {
 
     const createdJob = await JobRepository.createJob(jobPayload);
 
-    const skillRows = [];
-
-    for (const skillName of skillNames) {
-      let skill = await JobRepository.findSkillByName(skillName);
-
-      if (!skill) {
-        skill = await JobRepository.createSkill(skillName);
-      }
-
-      skillRows.push({
+    // Batch upsert skills — replaces the per-skill N+1 loop.
+    if (skillNames.length > 0) {
+      const skills = await JobRepository.upsertSkillsByNames(skillNames);
+      const skillRows = skills.map((skill) => ({
         skill_id: skill.skill_id,
         is_required: true,
         min_experience_years: 0,
         weight: 1,
-      });
-    }
-
-    if (skillRows.length > 0) {
+      }));
       await JobRepository.replaceJobSkills(createdJob.job_id, skillRows);
     }
 
@@ -310,24 +303,19 @@ class JobService {
 
     if (Array.isArray(payload.skills)) {
       const skillNames = normalizeSkillNames(payload.skills);
-      const skillRows = [];
-
-      for (const skillName of skillNames) {
-        let skill = await JobRepository.findSkillByName(skillName);
-
-        if (!skill) {
-          skill = await JobRepository.createSkill(skillName);
-        }
-
-        skillRows.push({
+      if (skillNames.length > 0) {
+        // Batch upsert — replaces the per-skill N+1 loop.
+        const skills = await JobRepository.upsertSkillsByNames(skillNames);
+        const skillRows = skills.map((skill) => ({
           skill_id: skill.skill_id,
           is_required: true,
           min_experience_years: 0,
           weight: 1,
-        });
+        }));
+        await JobRepository.replaceJobSkills(jobId, skillRows);
+      } else {
+        await JobRepository.replaceJobSkills(jobId, []);
       }
-
-      await JobRepository.replaceJobSkills(jobId, skillRows);
     }
 
     return JobRepository.findJobById(jobId);
@@ -350,6 +338,20 @@ class JobService {
     ensureEmployerOwnsJob(existingJob, employerId);
 
     return JobRepository.setJobStatus(jobId, 'CLOSED');
+  }
+
+  static async reopenJob(employerId, jobId) {
+    const existingJob = await JobRepository.findJobById(jobId);
+    ensureEmployerOwnsJob(existingJob, employerId);
+
+    // Tin bị admin từ chối (CLOSED + chưa duyệt) không cho employer tự mở lại.
+    if (existingJob.is_approved === false) {
+      throw ApiError.badRequest(
+        'Tin tuyển dụng này đã bị từ chối, không thể mở lại.',
+      );
+    }
+
+    return JobRepository.setJobStatus(jobId, 'OPEN');
   }
 
   static async moderateJob(jobId, decision) {
@@ -449,8 +451,8 @@ class JobService {
   static async getApplicants(employerId, jobId) {
     const existingJob = await JobRepository.findJobById(jobId);
     ensureEmployerOwnsJob(existingJob, employerId);
-
-    return [];
+    // TODO: implement via ApplicationRepository when Phase 8 (Application) is complete.
+    throw ApiError.notImplemented('JobService.getApplicants — sử dụng GET /api/applications/employer?jobId=:id thay thế.');
   }
 }
 

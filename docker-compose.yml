@@ -1,0 +1,62 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Docker Compose — local development + production
+# ─────────────────────────────────────────────────────────────────────────────
+# Usage:
+#   docker compose up          # start all services
+#   docker compose up backend  # start backend only
+#
+# Requires:
+#   backend/.env  (copy from backend/.env.example and fill in values)
+#   frontend/.env (optional)
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ─── Express API ───────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jobhub-backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "5000:5000"
+    volumes:
+      # Persist uploaded resumes outside the container
+      - resume_uploads:/app/uploads/resumes
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - jobhub
+
+  # ─── React / Vite frontend (nginx) ─────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: jobhub-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - jobhub
+
+volumes:
+  resume_uploads:
+
+networks:
+  jobhub:
+    driver: bridge
+

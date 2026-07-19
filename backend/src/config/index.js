@@ -31,7 +31,8 @@ const config = {
   clientUrl: optional('CLIENT_URL', 'http://localhost:5173'),
 
   jwt: {
-    secret: optional('JWT_SECRET', 'change-me-in-production'),
+    // Never fall back to a hardcoded secret — always require an explicit value.
+    secret: optional('JWT_SECRET', ''),
     accessTokenTtl: optional('JWT_ACCESS_TOKEN_TTL', '15m'),
     refreshTokenTtl: optional('JWT_REFRESH_TOKEN_TTL', '7d'),
   },
@@ -54,13 +55,24 @@ const config = {
 };
 
 /**
- * Validates that production-critical secrets are present.
- * Called once from server.js on boot. Missing secrets throw and stop
- * the process rather than running in a broken state.
+ * Validates that all critical secrets are present and strong enough.
+ * Called once from server.js on boot. Missing/weak secrets throw and
+ * stop the process rather than running in a broken/insecure state.
  */
 export const assertRequiredEnv = () => {
+  // JWT_SECRET is required in every environment — never fall back to defaults.
+  const jwtSecret = config.jwt.secret;
+  if (!jwtSecret) {
+    throw new Error('JWT_SECRET environment variable is required. Generate one with:\n  node -e "console.log(require(\'crypto\').randomBytes(64).toString(\'hex\'))"');
+  }
+  if (jwtSecret.length < 32) {
+    throw new Error('JWT_SECRET must be at least 32 characters long. Use a cryptographically random value.');
+  }
+  if (jwtSecret === 'change-me-in-production' || jwtSecret === 'change-me-to-a-long-random-secret') {
+    throw new Error('JWT_SECRET must not be the example placeholder value. Set a real secret.');
+  }
+
   if (config.isProduction) {
-    required('JWT_SECRET');
     required('SUPABASE_URL');
     required('SUPABASE_SERVICE_ROLE_KEY');
   }

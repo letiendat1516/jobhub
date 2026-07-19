@@ -9,8 +9,10 @@ import { fileURLToPath } from 'node:url';
 
 import ApiResponse from '../utils/ApiResponse.js';
 import ApiError from '../utils/ApiError.js';
+import config from '../config/index.js';
 import { chatCompletion } from '../ai/deepseekClient.js';
 import { buildJobMatchingPrompt, buildResumeExtractionPrompt } from '../ai/promptBuilder.js';
+import { getStatus, setApiKey, clearApiKey, getApiKey } from '../ai/deepseekKeyStore.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const LOGS_DIR = path.resolve(__dirname, '../../../ai-lab/logs');
@@ -67,7 +69,6 @@ class RecommendationController {
       // 2. Experience (0-20)
       let expScore = 0;
       const minExp = job.min_experience_years ?? 0;
-      const expLevel = job.experience_level || '';
       if (cvExpYears >= minExp) {
         expScore = 18 + Math.min(2, cvExpYears - minExp);
       } else if (minExp > 0) {
@@ -144,7 +145,7 @@ class RecommendationController {
    * Lưu kết quả chấm điểm (AI + SQL) vào DB cho job seeker.
    */
   static async saveScores(req, res) {
-    const { cvId, cvName, scores, jobs } = req.body;
+    const { cvId, cvName, scores } = req.body;
     if (!scores || typeof scores !== 'object') {
       throw ApiError.badRequest('Thiếu scores');
     }
@@ -272,6 +273,86 @@ class RecommendationController {
       }
     }
     return ApiResponse.ok(res, logs);
+  }
+
+  /**
+   * GET /api/recommendations/deepseek-key
+   * Trạng thái DeepSeek API key hiện tại (masked — không bao giờ trả key đầy đủ).
+   */
+  static async getDeepseekKeyStatus(_req, res) {
+    return ApiResponse.ok(res, getStatus());
+  }
+
+  /**
+   * POST /api/recommendations/deepseek-key
+   * Body: { apiKey } — lưu override key (áp dụng ngay, không cần restart).
+   */
+  static async setDeepseekKey(req, res) {
+    const { apiKey } = req.body;
+    if (!apiKey || typeof apiKey !== 'string' || apiKey.trim().length < 8) {
+      throw ApiError.badRequest('apiKey không hợp lệ (cần chuỗi dài ≥ 8 ký tự)');
+    }
+    const { updatedAt } = await setApiKey(apiKey.trim());
+    return ApiResponse.ok(res, { updatedAt, ...getStatus() });
+  }
+
+  /**
+   * DELETE /api/recommendations/deepseek-key
+   * Xoá override → revert về key trong .env.
+   */
+  static async clearDeepseekKey(_req, res) {
+    await clearApiKey();
+    return ApiResponse.ok(res, getStatus());
+  }
+
+  /**
+   * POST /api/recommendations/deepseek-key/test
+   * Body: { apiKey? } — kiểm tra key truyền vào; nếu bỏ qua thì test key hiện tại.
+   * Gọi DeepSeek request tối thiểu (max_tokens:1) để xác nhận key còn hạn.
+   * Luôn trả 200 với { valid, status, latencyMs, error? } để frontend xử lý gọn.
+   */
+  static async testDeepseekKey(req, res) {
+    const key = (req.body?.apiKey && String(req.body.apiKey).trim()) || getApiKey();
+    if (!key) {
+      throw ApiError.badRequest('Chưa có DeepSeek API key để kiểm tra');
+    }
+    const startedAt = Date.now();
+    try {
+      const resp = await fetch(`${config.deepseek.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${key}`,
+        },
+        body: JSON.stringify({
+          model: config.deepseek.model,
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 1,
+        }),
+      });
+      const latencyMs = Date.now() - startedAt;
+      if (resp.ok) {
+        return ApiResponse.ok(res, { valid: true, status: resp.status, latencyMs });
+      }
+      const text = await resp.text().catch(() => '');
+      return ApiResponse.ok(res, {
+        valid: false,
+        status: resp.status,
+        latencyMs,
+        error:
+          resp.status === 401 || resp.status === 403
+            ? `Key không hợp lệ hoặc hết hạn (${resp.status})`
+            : `DeepSeek trả ${resp.status}: ${text.slice(0, 120)}`,
+      });
+    } catch (err) {
+      const latencyMs = Date.now() - startedAt;
+      return ApiResponse.ok(res, {
+        valid: false,
+        status: 0,
+        latencyMs,
+        error: `Không kết nối được DeepSeek: ${err.message}`,
+      });
+    }
   }
 }
 

@@ -2,6 +2,22 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import jwt from 'jsonwebtoken';
 import config from '../src/config/index.js';
 
+// ── Auth mocking ──────────────────────────────────────────────────────────────
+// Mock AuthRepository so requireActivePrincipal never hits the real DB.
+vi.mock('../src/repositories/AuthRepository.js', () => ({
+  AUTH_ROLES: { JOB_SEEKER: 'job_seeker', EMPLOYER: 'employer', ADMIN: 'admin' },
+  default: {
+    findJobSeekerPublicById: async (id) => ({ id, role: 'job_seeker', email: 'seeker@test.local', name: 'Test Seeker', is_active: true }),
+    findEmployerPublicById:  async (id) => ({ id, role: 'employer',   email: 'employer@test.local', name: 'Test Employer', is_active: true }),
+    findAdminPublicById:     async (id) => ({ id, role: 'admin',      email: 'admin@test.local', name: 'Test Admin', is_active: true }),
+    findAccountByEmail: async () => null,
+    findJobSeekerByEmail: async () => null,
+    findEmployerByEmail: async () => null,
+    findAdminByEmail: async () => null,
+  },
+}));
+
+// ── Application repository mock ───────────────────────────────────────────────
 const repository = {
   getCandidateContext: vi.fn(),
   findJob: vi.fn(),
@@ -13,7 +29,6 @@ const repository = {
   listHistory: vi.fn(),
   updateStatusAtomic: vi.fn(),
 };
-
 vi.mock('../src/repositories/ApplicationRepository.js', () => ({ default: repository }));
 
 const { default: app } = await import('../src/app.js');
@@ -22,7 +37,7 @@ let server;
 let baseUrl;
 
 const token = (role, sub = 1) =>
-  jwt.sign({ sub, role, email: `${role}@test.local` }, config.jwt.secret, { expiresIn: '5m' });
+  jwt.sign({ sub, role, email: `${role}@test.local` }, config.jwt.secret, { expiresIn: '5m', algorithm: 'HS256' });
 const request = (path, options = {}) =>
   fetch(`${baseUrl}${path}`, {
     ...options,
@@ -38,7 +53,6 @@ beforeAll(async () => {
   await new Promise((resolve) => server.once('listening', resolve));
   baseUrl = `http://127.0.0.1:${server.address().port}`;
 });
-
 afterAll(async () => new Promise((resolve) => server.close(resolve)));
 
 beforeEach(() => {

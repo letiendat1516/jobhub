@@ -32,6 +32,8 @@ class JobController {
 
     return ApiResponse.ok(res, result.items, {
       total: result.total,
+      page: result.page,
+      limit: result.limit,
     });
   }
 
@@ -55,11 +57,18 @@ class JobController {
     return ApiResponse.ok(res, job);
   }
 
+  static async reopenJob(req, res) {
+    const job = await JobService.reopenJob(req.user.sub, req.params.id);
+    return ApiResponse.ok(res, job);
+  }
+
   static async getPendingReviewJobs(_req, res) {
     const result = await JobService.getPendingReviewJobs();
 
     return ApiResponse.ok(res, result.items, {
       total: result.total,
+      page: result.page,
+      limit: result.limit,
     });
   }
 

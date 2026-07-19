@@ -15,7 +15,8 @@ const own = (resume, userId) => {
   return resume;
 };
 
-/** Loại bỏ null byte (\u0000) — PostgreSQL cột text không chấp nhận ký tự này. */
+/** Loại bỏ null byte — PostgreSQL cột text không chấp nhận ký tự này. */
+// eslint-disable-next-line no-control-regex
 const sanitizeText = (str) => (str || '').replace(/\u0000/g, '');
 
 class ResumeService {

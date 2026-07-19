@@ -56,6 +56,13 @@ router.patch(
   asyncHandler(JobController.closeJob),
 );
 
+router.patch(
+  '/:id/reopen',
+  authenticate,
+  authorize('employer'),
+  asyncHandler(JobController.reopenJob),
+);
+
 /* Admin */
 router.get(
   '/admin/pending-review',

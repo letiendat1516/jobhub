@@ -94,19 +94,26 @@ class JobSeekerService {
     }
 
     if (Array.isArray(payload.skills)) {
-      const skillRows = [];
-      for (const item of payload.skills) {
-        const name = String(item.name || '').trim();
-        if (!name) continue;
-        let skill = await JobRepository.findSkillByName(name);
-        if (!skill) skill = await JobRepository.createSkill(name);
-        skillRows.push({
-          skill_id: skill.skill_id,
-          experience_years: item.experienceYears ?? null,
-          skill_detail: item.detail || null,
-          source: 'MANUAL',
-        });
-      }
+      // Batch upsert — replaces the per-skill N+1 loop.
+      const skillNames = payload.skills
+        .map((item) => String(item.name || '').trim())
+        .filter(Boolean);
+      const resolvedSkills = await JobRepository.upsertSkillsByNames(skillNames);
+      const skillMap = new Map(resolvedSkills.map((s) => [s.skill_name.toLowerCase(), s]));
+      const skillRows = payload.skills
+        .map((item) => {
+          const name = String(item.name || '').trim();
+          if (!name) return null;
+          const skill = skillMap.get(name.toLowerCase());
+          if (!skill) return null;
+          return {
+            skill_id: skill.skill_id,
+            experience_years: item.experienceYears ?? null,
+            skill_detail: item.detail || null,
+            source: 'MANUAL',
+          };
+        })
+        .filter(Boolean);
       await JobSeekerRepository.replaceSkills(userId, skillRows);
     }
 

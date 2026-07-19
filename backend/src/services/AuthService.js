@@ -146,7 +146,8 @@ class AuthService {
    */
   static async verifyAccessToken(token) {
     try {
-      return jwt.verify(token, config.jwt.secret);
+      // Pin the algorithm to HS256 to prevent "alg:none" / RSA confusion attacks.
+      return jwt.verify(token, config.jwt.secret, { algorithms: ['HS256'] });
     } catch {
       throw ApiError.unauthorized('Phiên đăng nhập đã hết hạn hoặc không hợp lệ.');
     }

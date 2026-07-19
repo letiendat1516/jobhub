@@ -101,7 +101,9 @@ export default function Hero() {
                 className="aspect-[4/5] w-full object-cover sm:aspect-[5/5] lg:aspect-[4/5]"
                 width="640"
                 height="800"
-                fetchPriority="high"
+                /* eslint-disable-next-line react/no-unknown-property -- React 18 passes lowercase attrs through
+                   silently; React 19 will know fetchPriority natively. */
+                fetchpriority="high"
               />
             </div>
 

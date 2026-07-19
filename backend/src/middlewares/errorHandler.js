@@ -35,6 +35,7 @@ const errorHandler = (err, req, res, next) => {
       error: {
         message: 'Dữ liệu gửi lên không hợp lệ.',
         code: 'VALIDATION_ERROR',
+        // Validation field errors are safe to surface in all environments.
         details: err.flatten(),
       },
     });
@@ -61,7 +62,10 @@ const errorHandler = (err, req, res, next) => {
        * Trả mã lỗi và nguyên nhân chi tiết về frontend.
        */
       ...(err.code ? { code: err.code } : {}),
-      ...(err.details ? { details: err.details } : {}),
+
+      // details may contain sensitive internal info (e.g. raw DB error fields
+      // surfaced from ApiError.badRequest) — only expose in non-production.
+      ...(!config.isProduction && err.details ? { details: err.details } : {}),
 
       /*
        * Chỉ trả stack trace trong môi trường phát triển.

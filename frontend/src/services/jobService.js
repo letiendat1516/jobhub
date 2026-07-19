@@ -37,6 +37,11 @@ const jobService = {
     return getData(response, null);
   },
 
+  reopenJob: async (id) => {
+    const response = await apiClient.patch(`/jobs/${id}/reopen`);
+    return getData(response, null);
+  },
+
   deleteJob: async (id) => {
     const response = await apiClient.delete(`/jobs/${id}`);
     return getData(response, null);

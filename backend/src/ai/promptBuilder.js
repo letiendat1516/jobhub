@@ -113,7 +113,9 @@ ${JSON.stringify(
     if (fullDesc.startsWith('{') || fullDesc.startsWith('[')) {
       try {
         fullDesc = JSON.parse(fullDesc);
-      } catch {}
+      } catch (_e) {
+        // JSON.parse failed — keep fullDesc as the raw string.
+      }
     }
     if (typeof fullDesc === 'object' && fullDesc) {
       const parts = [];

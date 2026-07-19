@@ -16,9 +16,11 @@ const handleError = (error, context) => {
 
 const cleanKeyword = (value = '') => value.trim().replace(/[,%()]/g, ' ');
 
+const MAX_LIMIT = 100;
+
 const paginate = (page, limit) => {
-  const normalizedPage = Number(page);
-  const normalizedLimit = Number(limit);
+  const normalizedPage = Math.max(1, Number(page) || 1);
+  const normalizedLimit = Math.min(MAX_LIMIT, Math.max(1, Number(limit) || 20));
   const from = (normalizedPage - 1) * normalizedLimit;
   return { page: normalizedPage, limit: normalizedLimit, from, to: from + normalizedLimit - 1 };
 };

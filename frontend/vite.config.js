@@ -31,6 +31,18 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: false,
-    chunkSizeWarningLimit: 1200,
+    // Warn at 500 KB — pages are now code-split so individual chunks should be small.
+    chunkSizeWarningLimit: 500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks: split large dependencies into stable long-cached files.
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-ui': ['framer-motion'],
+          'vendor-pdf': ['pdfjs-dist'],
+          'vendor-axios': ['axios'],
+        },
+      },
+    },
   },
 });

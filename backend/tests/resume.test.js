@@ -3,6 +3,25 @@ import jwt from 'jsonwebtoken';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import config from '../src/config/index.js';
 
+// ── Auth mocking ──────────────────────────────────────────────────────────────
+// Mock AuthRepository so that requireActivePrincipal never queries the real DB.
+// All findXxxPublicById methods return a test user matching the token payload.
+vi.mock('../src/repositories/AuthRepository.js', () => ({
+  AUTH_ROLES: { JOB_SEEKER: 'job_seeker', EMPLOYER: 'employer', ADMIN: 'admin' },
+  default: {
+    findJobSeekerPublicById: async (id) => ({ id, role: 'job_seeker', email: `seeker@test.local`, name: 'Test Seeker', is_active: true }),
+    findEmployerPublicById:  async (id) => ({ id, role: 'employer',   email: `employer@test.local`, name: 'Test Employer', is_active: true }),
+    findAdminPublicById:     async (id) => ({ id, role: 'admin',      email: `admin@test.local`, name: 'Test Admin', is_active: true }),
+    findAccountByEmail: async () => null,
+    findJobSeekerByEmail: async () => null,
+    findEmployerByEmail: async () => null,
+    findAdminByEmail: async () => null,
+    createJobSeeker: async (data) => ({ id: 99, name: data.full_name, email: data.email, created_at: new Date().toISOString() }),
+    createEmployer:  async (data) => ({ id: 99, name: data.company_name, email: data.email, created_at: new Date().toISOString() }),
+  },
+}));
+
+// ── Resume repository mock ────────────────────────────────────────────────────
 const repository = {
   saveResume: vi.fn(),
   findResumeById: vi.fn(),
@@ -12,13 +31,14 @@ const repository = {
   deleteResume: vi.fn(),
 };
 vi.mock('../src/repositories/ResumeRepository.js', () => ({ default: repository }));
+
 const { default: app } = await import('../src/app.js');
 
 let server;
 let baseUrl;
 let savedPath;
 const token = (role = 'job_seeker') =>
-  jwt.sign({ sub: 4, role }, config.jwt.secret, { expiresIn: '5m' });
+  jwt.sign({ sub: 4, role }, config.jwt.secret, { expiresIn: '5m', algorithm: 'HS256' });
 
 beforeAll(async () => {
   server = app.listen(0);

@@ -24,16 +24,6 @@ const handleError = (
   error,
   context,
 ) => {
-  console.error(
-    'SYSTEM CONFIG SUPABASE ERROR:',
-    {
-      context,
-      message: error?.message,
-      code: error?.code,
-      details: error?.details,
-      hint: error?.hint,
-    },
-  );
 
   logger.error(
     {
@@ -91,11 +81,7 @@ export const updateByKey = async (
   configKey,
   configValue,
 ) => {
-  console.log(
-    'UPDATING SYSTEM CONFIG:',
-    configKey,
-    configValue,
-  );
+  logger.info({ configKey }, 'Updating system configuration');
 
   const { error } =
     await getClient()

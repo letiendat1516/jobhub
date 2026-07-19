@@ -73,7 +73,6 @@ The Vite dev server proxies `/api` → `http://localhost:5000`.
 | ----- | ------ |
 | 1 — Project Structure | ✅ |
 | 2 — Homepage | ✅ |
-| 3 — Authentication | ⏳ |
-| 4+ — See `docs/07_AI_AGENT_RULES.md §22` | ⏳ |
-"# jobhub" 
-"# jobhub" 
+| 3 — Authentication | ✅ |
+| 4-10 — Jobs, Applications, AI, Recommendations | ✅ |
+| 11 — Docker / CI-CD | ✅ |

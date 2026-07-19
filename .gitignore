@@ -37,6 +37,8 @@ backend/uploads/resumes/*
 Thumbs.db
 
 # Crawler output (regenerable, large)
-frontend/src/data/jobsCrawled.json
+# jobsCrawled.json is tracked as an empty stub [] in git.
+# When you run the crawler locally it may grow large — do NOT commit
+# the populated version (add a pre-commit hook or check file size).
 scripts/crawl-topcv/data/
 scripts/crawl-topcv/node_modules/

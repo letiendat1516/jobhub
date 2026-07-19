@@ -16,6 +16,7 @@
 import config from '../config/index.js';
 import logger from '../utils/logger.js';
 import { logAiCall } from './aiLogger.js';
+import { getApiKey } from './deepseekKeyStore.js';
 
 /** Endpoint chat completion (OpenAI-compatible). */
 const CHAT_URL = () => `${config.deepseek.baseUrl}/chat/completions`;
@@ -48,7 +49,8 @@ export async function chatCompletion({ task, messages, metadata = {} }) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${config.deepseek.apiKey}`,
+        // Đọc key tại mỗi lần gọi → override từ UI áp dụng ngay, không cần restart.
+        Authorization: `Bearer ${getApiKey()}`,
       },
       body: JSON.stringify(body),
     });

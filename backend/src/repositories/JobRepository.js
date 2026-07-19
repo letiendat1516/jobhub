@@ -24,6 +24,13 @@ const handleError = (error, context) => {
   throw ApiError.internal('Lỗi truy vấn database.');
 };
 
+/**
+ * Escape special PostgREST .or() filter characters that could split
+ * or nest the filter expression unexpectedly.
+ */
+const escapeFilterValue = (value) =>
+  String(value).replace(/[,()]/g, ' ').trim();
+
 const JOB_SELECT = `
   job_id,
   employer_id,
@@ -107,7 +114,8 @@ class JobRepository {
     }
 
     if (keyword) {
-      query = query.or(`job_title.ilike.%${keyword}%,job_description.ilike.%${keyword}%`);
+      const safe = escapeFilterValue(keyword);
+      query = query.or(`job_title.ilike.%${safe}%,job_description.ilike.%${safe}%`);
     }
 
     if (city) {
@@ -397,6 +405,63 @@ class JobRepository {
     }
 
     return data;
+  }
+
+  /**
+   * Batch upsert skills by name — finds existing ones and creates missing
+   * ones in a single round-trip each, replacing the per-skill N+1 loop.
+   *
+   * @param {string[]} skillNames - Normalised, de-duplicated skill names.
+   * @returns {Promise<Array<{skill_id, skill_name}>>}
+   */
+  static async upsertSkillsByNames(skillNames) {
+    if (!skillNames.length) return [];
+    const client = getClient();
+
+    // 1. Parallel lookup for all skill names (case-insensitive ilike exact match).
+    const lookups = await Promise.all(
+      skillNames.map((name) =>
+        client
+          .from('skill')
+          .select('skill_id, skill_name')
+          .ilike('skill_name', name.trim())
+          .maybeSingle(),
+      ),
+    );
+
+    const results = [];
+    for (let i = 0; i < skillNames.length; i++) {
+      const { data, error } = lookups[i];
+      if (error) handleError(error, 'upsertSkillsByNames.lookup');
+
+      if (data) {
+        results.push(data);
+      } else {
+        // Skill doesn't exist — create it.
+        const { data: created, error: createErr } = await client
+          .from('skill')
+          .insert({ skill_name: skillNames[i].trim() })
+          .select('skill_id, skill_name')
+          .single();
+
+        if (createErr) {
+          if (createErr.code === '23505') {
+            // Race condition: another process created it simultaneously — re-fetch.
+            const { data: fetched } = await client
+              .from('skill')
+              .select('skill_id, skill_name')
+              .ilike('skill_name', skillNames[i].trim())
+              .maybeSingle();
+            if (fetched) results.push(fetched);
+          } else {
+            handleError(createErr, 'upsertSkillsByNames.create');
+          }
+        } else {
+          results.push(created);
+        }
+      }
+    }
+    return results;
   }
 }
 

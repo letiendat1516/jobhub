@@ -41,7 +41,8 @@ class ApplicationService {
     }
     if (
       job.application_deadline &&
-      new Date(job.application_deadline) < new Date(new Date().toDateString())
+      // Compare YYYY-MM-DD strings in UTC to avoid locale/timezone drift.
+      job.application_deadline < new Date().toISOString().slice(0, 10)
     ) {
       throw ApiError.badRequest('Công việc đã hết hạn ứng tuyển.');
     }

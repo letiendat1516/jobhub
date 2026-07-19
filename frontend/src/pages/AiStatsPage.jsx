@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import Icon from '../components/ui/Icon.jsx';
@@ -28,6 +28,15 @@ export default function AiStatsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // --- DeepSeek API key runtime override ---
+  const [keyStatus, setKeyStatus] = useState(null); // {source, masked, updatedAt, hasOverride}
+  const [keyInput, setKeyInput] = useState('');
+  const [showKey, setShowKey] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [testResult, setTestResult] = useState(null); // {valid, latencyMs, error?}
+  const [keyMsg, setKeyMsg] = useState(null); // {type, text}
+
   useEffect(() => {
     (async () => {
       setLoading(true);
@@ -46,6 +55,65 @@ export default function AiStatsPage() {
   }, []);
 
   const stats = useMemo(() => computeStats(logs), [logs]);
+
+  const loadKeyStatus = useCallback(async () => {
+    try {
+      const res = await recommendationService.getDeepseekKey();
+      setKeyStatus(res?.data ?? null);
+    } catch {
+      setKeyStatus(null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadKeyStatus();
+  }, [loadKeyStatus]);
+
+  const handleTestKey = async () => {
+    setTesting(true);
+    setTestResult(null);
+    setKeyMsg(null);
+    try {
+      const res = await recommendationService.testDeepseekKey(keyInput.trim() || null);
+      setTestResult(res?.data ?? null);
+    } catch (e) {
+      setTestResult({ valid: false, error: e.response?.data?.message || e.message });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const handleSaveKey = async () => {
+    const k = keyInput.trim();
+    if (k.length < 8) return;
+    setSaving(true);
+    setKeyMsg(null);
+    try {
+      await recommendationService.setDeepseekKey(k);
+      setKeyInput('');
+      setKeyMsg({ type: 'success', text: 'Đã lưu key mới — các lời gọi AI tiếp theo sẽ dùng key này.' });
+      await loadKeyStatus();
+    } catch (e) {
+      setKeyMsg({ type: 'error', text: e.response?.data?.message || e.message || 'Lỗi khi lưu key' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleClearKey = async () => {
+    if (!confirm('Xoá override, dùng lại key trong .env?')) return;
+    setSaving(true);
+    setKeyMsg(null);
+    try {
+      await recommendationService.clearDeepseekKey();
+      setKeyMsg({ type: 'success', text: 'Đã revert về key trong .env.' });
+      await loadKeyStatus();
+    } catch (e) {
+      setKeyMsg({ type: 'error', text: e.response?.data?.message || e.message || 'Lỗi khi xoá override' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <div className="bg-canvas pt-18">
@@ -77,6 +145,105 @@ export default function AiStatsPage() {
             Xem logs chi tiết
           </Link>
         </div>
+
+        {/* === DeepSeek API Key manager === */}
+        <section className="card mb-6 p-5">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="grid h-9 w-9 place-items-center rounded-xl bg-primary-50 text-primary">
+                <Icon name="shield" size={20} />
+              </span>
+              <div>
+                <h2 className="text-base font-bold text-ink">DeepSeek API Key</h2>
+                <p className="text-xs text-ink-soft">
+                  Đổi key khi hết hạn — áp dụng ngay, không cần sửa code hay restart backend.
+                </p>
+              </div>
+            </div>
+            {keyStatus && <KeySourceBadge source={keyStatus.source} />}
+          </div>
+
+          {/* Current status */}
+          {keyStatus && (
+            <div className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-sm">
+              <span className="text-ink-muted">Key hiện tại: </span>
+              <code className="font-semibold text-ink">{keyStatus.masked || '(chưa set)'}</code>
+              {keyStatus.updatedAt && (
+                <span className="ml-2 text-xs text-ink-muted">
+                  · cập nhật {new Date(keyStatus.updatedAt).toLocaleString('vi-VN')}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Input + actions */}
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <div className="relative flex-1">
+              <input
+                type={showKey ? 'text' : 'password'}
+                value={keyInput}
+                onChange={(e) => setKeyInput(e.target.value)}
+                placeholder="Dán DeepSeek API key mới (sk-...)"
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 pr-14 text-sm focus:border-primary focus:outline-none"
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-2 py-1 text-xs text-ink-muted hover:bg-slate-100"
+              >
+                {showKey ? 'Ẩn' : 'Hiện'}
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={handleTestKey}
+                disabled={testing || (!keyInput.trim() && !keyStatus?.masked)}
+                className="btn-secondary px-4 py-2 text-sm"
+              >
+                {testing ? 'Đang kiểm tra...' : 'Kiểm tra'}
+              </button>
+              <button
+                onClick={handleSaveKey}
+                disabled={saving || keyInput.trim().length < 8}
+                className="btn-primary px-4 py-2 text-sm"
+              >
+                {saving ? 'Đang lưu...' : 'Lưu & dùng'}
+              </button>
+              {keyStatus?.hasOverride && (
+                <button onClick={handleClearKey} disabled={saving} className="btn-secondary px-4 py-2 text-sm">
+                  Dùng .env
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Test result */}
+          {testResult && (
+            <div
+              className={cn(
+                'mt-3 flex items-center gap-2 rounded-lg px-3 py-2 text-sm',
+                testResult.valid ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600',
+              )}
+            >
+              <Icon name={testResult.valid ? 'checkCircle' : 'close'} size={16} />
+              {testResult.valid
+                ? `Key hợp lệ ✓ (${testResult.latencyMs ?? '?'}ms)`
+                : `Key KHÔNG hợp lệ — ${testResult.error || 'kiểm tra lại'}`}
+            </div>
+          )}
+
+          {keyMsg && (
+            <div
+              className={cn(
+                'mt-3 rounded-lg px-3 py-2 text-sm',
+                keyMsg.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600',
+              )}
+            >
+              {keyMsg.text}
+            </div>
+          )}
+        </section>
 
         {loading ? (
           <div className="card flex items-center justify-center py-20">
@@ -299,6 +466,16 @@ function computeStats(logs) {
     slowest,
     estCost,
   };
+}
+
+function KeySourceBadge({ source }) {
+  const map = {
+    override: { label: 'Override', cls: 'bg-violet-50 text-violet-600' },
+    env: { label: 'Từ .env', cls: 'bg-green-50 text-green-600' },
+    none: { label: 'Chưa set', cls: 'bg-red-50 text-red-600' },
+  };
+  const m = map[source] || map.none;
+  return <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-bold', m.cls)}>{m.label}</span>;
 }
 
 function StatCard({ label, value, icon, color = 'text-primary' }) {
