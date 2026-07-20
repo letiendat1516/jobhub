@@ -47,9 +47,9 @@ export default function Hero() {
           <SearchBar className="mt-8" />
 
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link to="/dang-ky" className="btn-primary">
-              <Icon name="upload" size={18} />
-              Tải CV của bạn
+            <Link to="/ho-so" className="btn-primary">
+                          <Icon name="upload" size={18} />
+                          Tải CV của bạn
             </Link>
             <Link to="/viec-lam" className="btn-secondary">
               Khám phá việc làm
