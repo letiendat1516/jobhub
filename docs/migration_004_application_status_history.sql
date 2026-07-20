@@ -8,8 +8,8 @@
 CREATE TABLE IF NOT EXISTS application_status_history (
   id                BIGSERIAL PRIMARY KEY,
   application_id    BIGINT NOT NULL,
-  old_status        application_status,
-  new_status        application_status NOT NULL,
+  old_status        VARCHAR(50),
+  new_status        VARCHAR(50) NOT NULL,
   changed_by        BIGINT NOT NULL,
   changed_by_role   VARCHAR(50),
   changed_at        TIMESTAMPTZ DEFAULT now(),
@@ -44,19 +44,19 @@ CREATE TRIGGER after_application_insert
 -- 3. RPC: update application status atomically
 CREATE OR REPLACE FUNCTION update_application_status(
   p_application_id   BIGINT,
-  p_expected_status  application_status,
-  p_new_status       application_status,
+  p_expected_status  VARCHAR,
+  p_new_status       VARCHAR,
   p_changed_by       BIGINT,
   p_changed_by_role  VARCHAR DEFAULT NULL
 )
 RETURNS TABLE(
   application_id   BIGINT,
-  old_status       application_status,
-  new_status       application_status,
+  old_status       VARCHAR,
+  new_status       VARCHAR,
   updated_at       TIMESTAMPTZ
 ) AS $$
 DECLARE
-  v_old_status application_status;
+  v_old_status VARCHAR;
 BEGIN
   -- Lock row and get current status
   SELECT status INTO v_old_status
