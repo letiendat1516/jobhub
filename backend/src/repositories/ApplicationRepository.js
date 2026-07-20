@@ -169,7 +169,7 @@ class ApplicationRepository {
   static async listHistory(applicationId) {
     const { data, error } = await getClient()
       .from('application_status_history')
-      .select('id, old_status, new_status, changed_by, changed_at')
+      .select('id, old_status, new_status, changed_by, changed_by_role, changed_at')
       .eq('application_id', applicationId)
       .order('changed_at', { ascending: true });
     if (error) fail(error, 'listHistory');
