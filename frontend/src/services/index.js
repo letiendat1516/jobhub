@@ -8,4 +8,5 @@ export { default as jobService } from './jobService.js';
 export { default as employerService } from './employerService.js';
 export { default as resumeService } from './resumeService.js';
 export { default as applicationService } from './applicationService.js';
+export { default as jobSeekerService } from './jobSeekerService.js';
 export { default as recommendationService } from './recommendationService.js';

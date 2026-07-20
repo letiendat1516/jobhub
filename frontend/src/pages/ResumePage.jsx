@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import resumeService from '../services/resumeService.js';
+import jobSeekerService from '../services/jobSeekerService.js';
 import Icon from '../components/ui/Icon.jsx';
 
 export default function ResumePage() {
@@ -10,6 +11,46 @@ export default function ResumePage() {
   const [error, setError] = useState('');
   // analysesMap: { [resumeId]: { status: 'idle'|'loading'|'done'|'error', data, errorMsg } }
   const [analysesMap, setAnalysesMap] = useState({});
+
+  // ---- Profile state ----
+  const [profile, setProfile] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileForm, setProfileForm] = useState({ fullName: '', headline: '', city: '' });
+  const [profileMsg, setProfileMsg] = useState({ type: '', text: '' });
+
+  const loadProfile = useCallback(async () => {
+    try {
+      setProfileLoading(true);
+      const res = await jobSeekerService.getProfile();
+      const p = res.data;
+      setProfile(p);
+      setProfileForm({
+        fullName: p.full_name || '',
+        headline: p.headline || '',
+        city: p.city || '',
+      });
+    } catch {
+      // silently fail — user can still manage CVs
+    } finally {
+      setProfileLoading(false);
+    }
+  }, []);
+
+  const saveProfile = async (e) => {
+    e.preventDefault();
+    setProfileSaving(true);
+    setProfileMsg({ type: '', text: '' });
+    try {
+      await jobSeekerService.updateProfile(profileForm);
+      setProfileMsg({ type: 'success', text: 'Đã cập nhật hồ sơ.' });
+      await loadProfile();
+    } catch (err) {
+      setProfileMsg({ type: 'error', text: err.message || 'Không thể cập nhật hồ sơ.' });
+    } finally {
+      setProfileSaving(false);
+    }
+  };
 
   const loadAnalysesForList = useCallback(async (cvList) => {
     const entries = await Promise.all(
@@ -38,7 +79,8 @@ export default function ResumePage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadProfile();
+  }, [load, loadProfile]);
 
   const upload = async (event) => {
     event.preventDefault();
@@ -92,11 +134,88 @@ export default function ResumePage() {
     }
   };
 
+  const missingFields = ['headline', 'city'].filter((f) => {
+    const key = f === 'headline' ? 'headline' : 'city';
+    return !profileForm[key]?.trim();
+  });
+
   return (
     <main className="container-page py-12">
       <p className="eyebrow">Ứng viên</p>
       <h1 className="mt-3 text-3xl font-bold">Hồ sơ & CV</h1>
-      <p className="mt-2 text-ink-soft">Quản lý CV PDF dùng để ứng tuyển.</p>
+      <p className="mt-2 text-ink-soft">Quản lý thông tin cá nhân và CV PDF dùng để ứng tuyển.</p>
+
+      {/* ===== Profile section ===== */}
+      <section className="card mt-8 p-6">
+        <h2 className="text-lg font-bold">Thông tin hồ sơ</h2>
+        <p className="mt-1 text-sm text-ink-soft">
+          Những thông tin này sẽ hiển thị khi nhà tuyển dụng xem hồ sơ của bạn.
+        </p>
+
+        {missingFields.length > 0 && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+            <span className="font-semibold">Cần bổ sung để ứng tuyển:</span>{' '}
+            {missingFields.map((f) => (f === 'headline' ? 'Tiêu đề hồ sơ' : 'Địa điểm')).join(', ')}.
+          </div>
+        )}
+
+        {profileMsg.text && (
+          <div
+            className={`mt-4 rounded-xl p-3 text-sm ${
+              profileMsg.type === 'success'
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-red-50 text-red-700'
+            }`}
+          >
+            {profileMsg.text}
+          </div>
+        )}
+
+        {profileLoading ? (
+          <div className="mt-4 text-sm text-ink-muted">Đang tải hồ sơ...</div>
+        ) : (
+          <form onSubmit={saveProfile} className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <label className="text-sm font-semibold">
+              Họ và tên
+              <input
+                value={profileForm.fullName}
+                onChange={(e) => setProfileForm((p) => ({ ...p, fullName: e.target.value }))}
+                placeholder="Nguyễn Văn A"
+                className="mt-2 w-full rounded-xl border p-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-semibold">
+              Tiêu đề hồ sơ <span className="text-red-500">*</span>
+              <input
+                value={profileForm.headline}
+                onChange={(e) => setProfileForm((p) => ({ ...p, headline: e.target.value }))}
+                placeholder="VD: Backend Developer"
+                className="mt-2 w-full rounded-xl border p-3 font-normal"
+              />
+            </label>
+            <label className="text-sm font-semibold">
+              Địa điểm <span className="text-red-500">*</span>
+              <input
+                value={profileForm.city}
+                onChange={(e) => setProfileForm((p) => ({ ...p, city: e.target.value }))}
+                placeholder="VD: Hồ Chí Minh"
+                className="mt-2 w-full rounded-xl border p-3 font-normal"
+              />
+            </label>
+            <div className="flex items-end sm:col-span-2 lg:col-span-3">
+              <button
+                type="submit"
+                disabled={profileSaving}
+                className="btn-primary"
+              >
+                {profileSaving ? 'Đang lưu...' : 'Lưu thông tin'}
+              </button>
+            </div>
+          </form>
+        )}
+      </section>
+
+      {/* ===== CV upload form ===== */}
       <form onSubmit={upload} className="card mt-8 grid gap-4 p-6 md:grid-cols-[1fr_1fr_auto]">
         <label className="text-sm font-semibold">
           Tên CV
@@ -302,4 +421,3 @@ function AnalysisPanel({ data }) {
     </div>
   );
 }
-
