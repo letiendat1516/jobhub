@@ -27,7 +27,7 @@ const DETAIL_SELECT = `
 class ApplicationRepository {
   static async getCandidateContext(jobSeekerId) {
     const client = getClient();
-    const [profileResult, resumeResult] = await Promise.all([
+    const [profileResult, resumesResult] = await Promise.all([
       client
         .from('job_seeker')
         .select('job_seeker_id, full_name, headline, city, profile_summary, is_active')
@@ -35,16 +35,14 @@ class ApplicationRepository {
         .maybeSingle(),
       client
         .from('resume')
-        .select('resume_id, title, file_name, upload_date')
+        .select('resume_id, title, file_name, is_primary, upload_date')
         .eq('job_seeker_id', jobSeekerId)
-        .eq('is_primary', true)
-        .order('upload_date', { ascending: false })
-        .limit(1)
-        .maybeSingle(),
+        .order('is_primary', { ascending: false })
+        .order('upload_date', { ascending: false }),
     ]);
     if (profileResult.error) fail(profileResult.error, 'getCandidateContext.profile');
-    if (resumeResult.error) fail(resumeResult.error, 'getCandidateContext.resume');
-    return { profile: profileResult.data, resume: resumeResult.data };
+    if (resumesResult.error) fail(resumesResult.error, 'getCandidateContext.resumes');
+    return { profile: profileResult.data, resumes: resumesResult.data ?? [] };
   }
 
   static async findJob(jobId) {

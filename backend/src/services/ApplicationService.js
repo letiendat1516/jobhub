@@ -26,31 +26,38 @@ class ApplicationService {
     return { ...candidate, job, alreadyApplied: Boolean(duplicate) };
   }
 
-  static async applyJob(jobSeekerId, { jobId, coverLetter }) {
-    const { profile, resume, job, alreadyApplied } = await ApplicationService.getApplyContext(
+  static async applyJob(jobSeekerId, { jobId, coverLetter, resumeId }) {
+    const { profile, resumes, job, alreadyApplied } = await ApplicationService.getApplyContext(
       jobSeekerId,
       jobId,
     );
     if (!profile.is_active) throw ApiError.forbidden('Tài khoản đã bị vô hiệu hóa.');
     const missing = ['full_name', 'headline', 'city'].filter((field) => !profile[field]);
     if (missing.length) throw ApiError.badRequest(`Hồ sơ chưa đầy đủ: ${missing.join(', ')}.`);
-    if (!resume) throw ApiError.badRequest('Bạn chưa có CV chính để ứng tuyển.');
+    if (!resumes || resumes.length === 0) throw ApiError.badRequest('Bạn chưa có CV nào để ứng tuyển.');
     if (!job) throw ApiError.notFound('Không tìm thấy công việc.');
     if (!job.is_approved || job.status !== 'OPEN') {
       throw ApiError.badRequest('Công việc không còn nhận hồ sơ.');
     }
     if (
       job.application_deadline &&
-      // Compare YYYY-MM-DD strings in UTC to avoid locale/timezone drift.
       job.application_deadline < new Date().toISOString().slice(0, 10)
     ) {
       throw ApiError.badRequest('Công việc đã hết hạn ứng tuyển.');
     }
     if (alreadyApplied) throw ApiError.conflict('Bạn đã ứng tuyển công việc này.');
+
+    // Use specified resume or fall back to primary
+    const selectedResume = resumeId
+      ? resumes.find((r) => r.resume_id === resumeId)
+      : resumes.find((r) => r.is_primary) || resumes[0];
+
+    if (!selectedResume) throw ApiError.badRequest('Không tìm thấy CV đã chọn.');
+
     return ApplicationRepository.createApplication({
       job_seeker_id: jobSeekerId,
       job_id: jobId,
-      resume_id: resume.resume_id,
+      resume_id: selectedResume.resume_id,
       cover_letter: coverLetter || null,
       status: 'SUBMITTED',
     });
