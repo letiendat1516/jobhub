@@ -1,6 +1,7 @@
 import { AuthProvider } from './context/AuthContext.jsx';
 import AppRoutes from './routes/AppRoutes.jsx';
 import ErrorBoundary from './components/ErrorBoundary.jsx';
+import { useLocation } from 'react-router-dom';
 
 /**
  * App — top-level component.
@@ -8,8 +9,10 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
  * a safe fallback instead of a blank white screen.
  */
 export default function App() {
+  const location = useLocation();
+
   return (
-    <ErrorBoundary>
+    <ErrorBoundary resetKey={location.key}>
       <AuthProvider>
         <AppRoutes />
       </AuthProvider>

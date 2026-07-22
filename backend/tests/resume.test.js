@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import jwt from 'jsonwebtoken';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import config from '../src/config/index.js';
+import { repairLatin1DecodedUtf8 } from '../src/utils/utf8.js';
 
 // ── Auth mocking ──────────────────────────────────────────────────────────────
 // Mock AuthRepository so that requireActivePrincipal never queries the real DB.
@@ -75,10 +76,14 @@ describe('Resume API', () => {
     expect(repository.findResumesByUser).toHaveBeenCalledWith(4);
   });
 
-  it('uploads a PDF and makes the first resume primary', async () => {
+  it('uploads a PDF, preserves its UTF-8 filename, and makes it primary', async () => {
     const form = new FormData();
     form.append('title', 'Test CV');
-    form.append('resume', new Blob(['%PDF-1.4\n%%EOF'], { type: 'application/pdf' }), 'test.pdf');
+    form.append(
+      'resume',
+      new Blob(['%PDF-1.4\n%%EOF'], { type: 'application/pdf' }),
+      'Nguyễn Trần Gia Bảo.pdf',
+    );
     const response = await fetch(`${baseUrl}/api/resumes`, {
       method: 'POST',
       headers: { authorization: `Bearer ${token()}` },
@@ -86,8 +91,18 @@ describe('Resume API', () => {
     });
     expect(response.status).toBe(201);
     expect(repository.saveResume).toHaveBeenCalledWith(
-      expect.objectContaining({ job_seeker_id: 4, file_name: 'test.pdf', is_primary: true }),
+      expect.objectContaining({
+        job_seeker_id: 4,
+        file_name: 'Nguyễn Trần Gia Bảo.pdf',
+        is_primary: true,
+      }),
     );
+  });
+
+  it('repairs reversible Latin-1 decoded UTF-8 filenames', () => {
+    const expected = 'Nguyễn Trần Gia Bảo.pdf';
+    const mojibake = Buffer.from(expected, 'utf8').toString('latin1');
+    expect(repairLatin1DecodedUtf8(mojibake)).toBe(expected);
   });
 
   it('rejects a non-PDF upload', async () => {

@@ -1,30 +1,109 @@
-import { useEffect, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import ApplicationStatusBadge, {
   applicationStatusLabels,
 } from '../components/application/ApplicationStatusBadge.jsx';
 import StatusHistoryTimeline from '../components/application/StatusHistoryTimeline.jsx';
 import applicationService from '../services/applicationService.js';
 
+const defaultMeta = { total: 0, page: 1, limit: 10 };
+const applicationListCache = new Map();
+
+function readFilters(searchParams) {
+  const parsedPage = Number(searchParams.get('page'));
+  const status = searchParams.get('status') || '';
+
+  return {
+    page: Number.isInteger(parsedPage) && parsedPage > 0 ? parsedPage : 1,
+    status: Object.hasOwn(applicationStatusLabels, status) ? status : '',
+    candidateName: searchParams.get('candidateName') || '',
+    sort: searchParams.get('sort') === 'oldest' ? 'oldest' : 'newest',
+  };
+}
+
+function writeFilters(filters) {
+  const params = new URLSearchParams();
+  if (filters.page > 1) params.set('page', String(filters.page));
+  if (filters.status) params.set('status', filters.status);
+  if (filters.candidateName) params.set('candidateName', filters.candidateName);
+  if (filters.sort !== 'newest') params.set('sort', filters.sort);
+  return params;
+}
+
 export default function EmployerApplicationsPage() {
-  const [items, setItems] = useState([]);
-  const [meta, setMeta] = useState({ total: 0, page: 1, limit: 10 });
-  const [filters, setFilters] = useState({
-    page: 1,
-    status: '',
-    candidateName: '',
-    sort: 'newest',
-  });
+  const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const filters = useMemo(() => readFilters(searchParams), [searchParams]);
+  const cacheKey = searchParams.toString();
+  const cached = applicationListCache.get(cacheKey);
+  const [items, setItems] = useState(() => cached?.items || []);
+  const [meta, setMeta] = useState(() => cached?.meta || defaultMeta);
+  const [loading, setLoading] = useState(() => !cached);
   const [error, setError] = useState('');
+  const restoredScrollKey = useRef('');
+
+  const updateFilters = (patch) => {
+    setSearchParams(writeFilters({ ...filters, ...patch }), { replace: true });
+  };
+
   useEffect(() => {
+    const controller = new AbortController();
+    const cachedResult = applicationListCache.get(cacheKey);
+    if (cachedResult) {
+      setItems(cachedResult.items);
+      setMeta(cachedResult.meta);
+    } else {
+      setItems([]);
+      setMeta(defaultMeta);
+    }
+    setLoading(!cachedResult);
+    setError('');
+
     applicationService
-      .getEmployerApplications(filters)
+      .getEmployerApplications(filters, { signal: controller.signal })
       .then((r) => {
-        setItems(r.data);
-        setMeta(r.meta);
+        if (controller.signal.aborted) return;
+        const nextItems = Array.isArray(r?.data) ? r.data : [];
+        const nextMeta = r?.meta && typeof r.meta === 'object' ? r.meta : defaultMeta;
+        applicationListCache.set(cacheKey, {
+          ...applicationListCache.get(cacheKey),
+          items: nextItems,
+          meta: nextMeta,
+        });
+        setItems(nextItems);
+        setMeta(nextMeta);
+        setLoading(false);
       })
-      .catch((e) => setError(e.message));
-  }, [filters]);
+      .catch((e) => {
+        if (controller.signal.aborted) return;
+        setError(e?.message || 'Không thể tải danh sách hồ sơ ứng tuyển.');
+        setLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [cacheKey, filters]);
+
+  useEffect(() => {
+    if (loading || restoredScrollKey.current === cacheKey) return undefined;
+    restoredScrollKey.current = cacheKey;
+    const savedScroll = applicationListCache.get(cacheKey)?.scrollY || 0;
+    const frame = window.requestAnimationFrame(() => window.scrollTo({ top: savedScroll }));
+    return () => window.cancelAnimationFrame(frame);
+  }, [cacheKey, items, loading]);
+
+  useEffect(
+    () => () => {
+      applicationListCache.set(cacheKey, {
+        ...applicationListCache.get(cacheKey),
+        items,
+        meta,
+        scrollY: window.scrollY,
+      });
+    },
+    [cacheKey, items, meta],
+  );
+
+  const listUrl = `${location.pathname}${location.search}`;
   return (
     <main className="container-page py-12">
       <p className="eyebrow">Nhà tuyển dụng</p>
@@ -34,12 +113,12 @@ export default function EmployerApplicationsPage() {
         <input
           placeholder="Tên ứng viên"
           value={filters.candidateName}
-          onChange={(e) => setFilters((f) => ({ ...f, candidateName: e.target.value, page: 1 }))}
+          onChange={(e) => updateFilters({ candidateName: e.target.value, page: 1 })}
           className="rounded-xl border p-3 text-sm"
         />
         <select
           value={filters.status}
-          onChange={(e) => setFilters((f) => ({ ...f, status: e.target.value, page: 1 }))}
+          onChange={(e) => updateFilters({ status: e.target.value, page: 1 })}
           className="rounded-xl border p-3 text-sm"
         >
           <option value="">Tất cả trạng thái</option>
@@ -51,7 +130,7 @@ export default function EmployerApplicationsPage() {
         </select>
         <select
           value={filters.sort}
-          onChange={(e) => setFilters((f) => ({ ...f, sort: e.target.value }))}
+          onChange={(e) => updateFilters({ sort: e.target.value })}
           className="rounded-xl border p-3 text-sm"
         >
           <option value="newest">Mới nhất</option>
@@ -59,7 +138,8 @@ export default function EmployerApplicationsPage() {
         </select>
       </div>
       {error && <p className="rounded-xl bg-red-50 p-4 text-red-700">{error}</p>}
-      {!error && items.length === 0 && (
+      {loading && <div className="card p-10 text-center">Đang tải...</div>}
+      {!loading && !error && items.length === 0 && (
         <div className="card p-10 text-center">Chưa nhận được hồ sơ ứng tuyển nào.</div>
       )}
       <div className="space-y-3">
@@ -67,6 +147,7 @@ export default function EmployerApplicationsPage() {
           <Link
             className="card grid gap-3 p-5 hover:border-primary md:grid-cols-[1fr_1fr_auto]"
             to={`/employer/applications/${item.application_id}`}
+            state={{ applicationsListUrl: listUrl }}
             key={item.application_id}
           >
             <div>
@@ -91,20 +172,32 @@ export default function EmployerApplicationsPage() {
 
 export function EmployerApplicationReviewPage() {
   const { applicationId } = useParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [data, setData] = useState(null);
   const [next, setNext] = useState('');
   const [error, setError] = useState('');
-  const load = () =>
+  const load = useCallback((config = {}) =>
     applicationService
-      .reviewApplication(applicationId)
+      .reviewApplication(applicationId, config)
       .then((r) => {
+        if (!r?.data) throw new Error('Không tìm thấy hồ sơ ứng tuyển.');
         setData(r.data);
         setNext('');
+        setError('');
       })
-      .catch((e) => setError(e.message));
-  useEffect(load, [applicationId]);
+      .catch((e) => {
+        if (config.signal?.aborted) return;
+        setError(e?.message || 'Không thể tải hồ sơ ứng tuyển.');
+      }), [applicationId]);
+  useEffect(() => {
+    const controller = new AbortController();
+    load({ signal: controller.signal });
+    return () => controller.abort();
+  }, [load]);
   const update = async () => {
     if (!next) return;
+    setError('');
     try {
       await applicationService.updateStatus(applicationId, {
         status: next,
@@ -122,11 +215,19 @@ export function EmployerApplicationReviewPage() {
       </main>
     );
   if (!data) return <main className="container-page py-16">Đang tải...</main>;
+  const allowedTransitions = Array.isArray(data.allowedTransitions)
+    ? data.allowedTransitions
+    : [];
+  const applicationsListUrl = location.state?.applicationsListUrl || '/employer/applications';
   return (
     <main className="container-page py-12">
-      <Link to="/employer/applications" className="text-sm font-semibold text-primary">
+      <button
+        type="button"
+        onClick={() => navigate(applicationsListUrl)}
+        className="text-sm font-semibold text-primary"
+      >
         ← Danh sách hồ sơ
-      </Link>
+      </button>
       <div className="mt-6 grid gap-6 lg:grid-cols-[1.5fr_1fr]">
         <section className="space-y-6">
           <div className="card p-6">
@@ -179,7 +280,7 @@ export function EmployerApplicationReviewPage() {
         <aside className="space-y-6">
           <div className="card p-6">
             <h2 className="font-bold">Cập nhật trạng thái</h2>
-            {data.allowedTransitions.length ? (
+            {allowedTransitions.length ? (
               <>
                 <select
                   value={next}
@@ -187,7 +288,7 @@ export function EmployerApplicationReviewPage() {
                   className="mt-4 w-full rounded-xl border p-3"
                 >
                   <option value="">Chọn trạng thái</option>
-                  {data.allowedTransitions.map((s) => (
+                  {allowedTransitions.map((s) => (
                     <option key={s} value={s}>
                       {applicationStatusLabels[s]}
                     </option>

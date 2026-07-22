@@ -1,4 +1,5 @@
 import { Component } from 'react';
+import { useLocation } from 'react-router-dom';
 
 /**
  * ErrorBoundary — catch render-time errors in the React tree.
@@ -24,6 +25,12 @@ export default class ErrorBoundary extends Component {
   componentDidCatch(error, info) {
     // In production, forward to your error-tracking service (e.g. Sentry).
     console.error('[ErrorBoundary]', error, info?.componentStack);
+  }
+
+  componentDidUpdate(previousProps) {
+    if (this.state.hasError && previousProps.resetKey !== this.props.resetKey) {
+      this.setState({ hasError: false, error: null });
+    }
   }
 
   render() {
@@ -58,5 +65,16 @@ export default class ErrorBoundary extends Component {
     }
     return this.props.children;
   }
+}
+
+/** Reset a caught route error after any real browser navigation. */
+export function RouteErrorBoundary({ children, fallback }) {
+  const location = useLocation();
+
+  return (
+    <ErrorBoundary key={location.key} fallback={fallback}>
+      {children}
+    </ErrorBoundary>
+  );
 }
 

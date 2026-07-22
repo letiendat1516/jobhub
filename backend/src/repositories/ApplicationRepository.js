@@ -13,6 +13,31 @@ const fail = (error, context) => {
   throw ApiError.internal('Không thể xử lý hồ sơ ứng tuyển.');
 };
 
+const statusUpdateError = (error) => {
+  const message = error?.message ?? '';
+
+  if (error?.code === 'P0002' || message.includes('APPLICATION_NOT_FOUND')) {
+    throw ApiError.notFound('Không tìm thấy hồ sơ ứng tuyển.');
+  }
+  if (error?.code === '42501' || message.includes('APPLICATION_FORBIDDEN')) {
+    throw ApiError.forbidden('Bạn không có quyền cập nhật hồ sơ này.');
+  }
+  if (error?.code === '40001' || message.includes('APPLICATION_STATUS_CONFLICT')) {
+    throw ApiError.conflict('Hồ sơ đã được cập nhật. Vui lòng tải lại.');
+  }
+  if (error?.code === '22023' || message.includes('INVALID_STATUS_TRANSITION')) {
+    throw ApiError.badRequest('Chuyển trạng thái không hợp lệ.');
+  }
+  if (error?.code === 'PGRST202') {
+    throw new ApiError(
+      503,
+      'Chức năng cập nhật trạng thái chưa được cấu hình trong database.',
+    );
+  }
+
+  fail(error, 'updateStatusAtomic');
+};
+
 const DETAIL_SELECT = `
   application_id, job_seeker_id, job_id, resume_id, cover_letter,
   status, application_date, updated_at,
@@ -165,25 +190,16 @@ class ApplicationRepository {
   }
 
   static async listHistory(applicationId) {
-    try {
-      const { data, error } = await getClient()
-        .from('application_status_history')
-        .select('id, old_status, new_status, changed_by, changed_at')
-        .eq('application_id', applicationId)
-        .order('changed_at', { ascending: true });
-      if (error) {
-        // Table might not exist yet — return empty array gracefully
-        if (error?.code === '42P01' || error?.code === '42703') {
-          return [];
-        }
-        fail(error, 'listHistory');
-      }
-      return data ?? [];
-    } catch (err) {
-      // Fallback: if table doesn't exist, return empty
-      logger.warn({ err, applicationId }, 'listHistory fallback');
-      return [];
+    const { data, error } = await getClient()
+      .from('application_status_history')
+      .select('id, old_status, new_status, changed_by, changed_at')
+      .eq('application_id', applicationId)
+      .order('changed_at', { ascending: true });
+    if (error?.code === '42P01') {
+      throw new ApiError(503, 'Lịch sử trạng thái chưa được cấu hình trong database.');
     }
+    if (error) fail(error, 'listHistory');
+    return data ?? [];
   }
 
   static async updateStatusAtomic({
@@ -193,44 +209,24 @@ class ApplicationRepository {
     actorId,
     actorRole,
   }) {
-    const client = getClient();
-
-    // Step 1: Atomically update status with expectedStatus check
-    const { data: updated, error: updateError } = await client
-      .from('application')
-      .update({ status: newStatus })
-      .eq('application_id', applicationId)
-      .eq('status', expectedStatus)
-      .select('application_id, status, updated_at')
+    const { data, error } = await getClient()
+      .rpc('update_application_status', {
+        p_application_id: applicationId,
+        p_expected_status: expectedStatus,
+        p_new_status: newStatus,
+        p_changed_by: actorId,
+        p_changed_by_role: actorRole,
+        p_employer_id: actorRole === 'admin' ? null : actorId,
+        p_is_admin: actorRole === 'admin',
+      })
       .single();
-
-    // No row updated = status conflict (PGRST116: no rows returned)
-    if (updateError) {
-      if (updateError?.code === 'PGRST116') {
-        throw ApiError.conflict('Hồ sơ đã được cập nhật. Vui lòng tải lại.');
-      }
-      fail(updateError, 'updateStatusAtomic.update');
-    }
-
-    // Step 2: Try to insert history record (table might not exist)
-    try {
-      const { error: historyError } = await client
-        .from('application_status_history')
-        .insert({
-          application_id: applicationId,
-          old_status: expectedStatus,
-          new_status: newStatus,
-          changed_by: actorId,
-          changed_by_role: actorRole,
-        });
-      if (historyError && historyError?.code !== '42P01' && historyError?.code !== '42703') {
-        logger.warn({ err: historyError }, 'Failed to insert status history');
-      }
-    } catch (err) {
-      logger.warn({ err, applicationId }, 'Status history insert skipped');
-    }
-
-    return updated;
+    if (error) statusUpdateError(error);
+    return {
+      application_id: data.result_application_id,
+      status: data.result_status,
+      updated_at: data.result_updated_at,
+      history_id: data.history_id,
+    };
   }
 }
 
