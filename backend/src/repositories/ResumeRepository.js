@@ -1,6 +1,7 @@
 import getSupabaseClient from '../config/supabase.js';
 import ApiError from '../utils/ApiError.js';
 import logger from '../utils/logger.js';
+import { repairLatin1DecodedUtf8 } from '../utils/utf8.js';
 
 const client = () => {
   const value = getSupabaseClient();
@@ -12,12 +13,20 @@ const fail = (error, context) => {
   throw ApiError.internal('Không thể xử lý CV.');
 };
 const SELECT = 'resume_id, job_seeker_id, title, file_name, file_path, is_primary, upload_date';
+const normalizeResume = (resume) =>
+  resume
+    ? {
+        ...resume,
+        title: repairLatin1DecodedUtf8(resume.title),
+        file_name: repairLatin1DecodedUtf8(resume.file_name),
+      }
+    : resume;
 
 class ResumeRepository {
   static async saveResume(payload) {
     const { data, error } = await client().from('resume').insert(payload).select(SELECT).single();
     if (error) fail(error, 'saveResume');
-    return data;
+    return normalizeResume(data);
   }
   static async findResumeById(id) {
     const { data, error } = await client()
@@ -26,7 +35,7 @@ class ResumeRepository {
       .eq('resume_id', id)
       .maybeSingle();
     if (error) fail(error, 'findResumeById');
-    return data;
+    return normalizeResume(data);
   }
   static async findResumesByUser(userId) {
     const { data, error } = await client()
@@ -36,7 +45,7 @@ class ResumeRepository {
       .order('is_primary', { ascending: false })
       .order('upload_date', { ascending: false });
     if (error) fail(error, 'findResumesByUser');
-    return data ?? [];
+    return (data ?? []).map(normalizeResume);
   }
   static async clearPrimary(userId, exceptId = null) {
     let query = client().from('resume').update({ is_primary: false }).eq('job_seeker_id', userId);
@@ -52,7 +61,7 @@ class ResumeRepository {
       .select(SELECT)
       .single();
     if (error) fail(error, 'updateResume');
-    return data;
+    return normalizeResume(data);
   }
   static async deleteResume(id) {
     const { error } = await client().from('resume').delete().eq('resume_id', id);

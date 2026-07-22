@@ -5,8 +5,10 @@ const applicationService = {
   apply: (payload) => apiClient.post('/applications', payload),
   getMyApplications: (params = {}) => apiClient.get('/applications/me', { params }),
   getMyApplication: (id) => apiClient.get(`/applications/me/${id}`),
-  getEmployerApplications: (params = {}) => apiClient.get('/applications/employer', { params }),
-  reviewApplication: (id) => apiClient.get(`/applications/employer/${id}`),
+  getEmployerApplications: (params = {}, config = {}) =>
+    apiClient.get('/applications/employer', { ...config, params }),
+  reviewApplication: (id, config = {}) =>
+    apiClient.get(`/applications/employer/${id}`, config),
   updateStatus: (id, payload) => apiClient.patch(`/applications/employer/${id}/status`, payload),
 };
 

@@ -8,6 +8,7 @@ import logger from '../utils/logger.js';
 import { chatCompletion } from '../ai/deepseekClient.js';
 import { buildResumeExtractionPrompt } from '../ai/promptBuilder.js';
 import config from '../config/index.js';
+import { normalizeUploadFilename } from '../utils/utf8.js';
 
 const own = (resume, userId) => {
   if (!resume || Number(resume.job_seeker_id) !== Number(userId))
@@ -22,6 +23,7 @@ const sanitizeText = (str) => (str || '').replace(/\u0000/g, '');
 class ResumeService {
   static async uploadResume(userId, file, payload = {}) {
     if (!file) throw ApiError.badRequest('Vui lòng chọn tệp PDF.');
+    const originalFilename = normalizeUploadFilename(file.originalname);
     const existing = await ResumeRepository.findResumesByUser(userId);
     const makePrimary = payload.isPrimary === 'true' || existing.length === 0;
     if (makePrimary) await ResumeRepository.clearPrimary(userId);
@@ -30,8 +32,8 @@ class ResumeService {
     try {
       resume = await ResumeRepository.saveResume({
         job_seeker_id: userId,
-        title: payload.title?.trim() || path.parse(file.originalname).name,
-        file_name: file.originalname,
+        title: payload.title?.trim() || path.parse(originalFilename).name,
+        file_name: originalFilename,
         file_path: file.path,
         is_primary: makePrimary,
       });

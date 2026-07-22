@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import multer from 'multer';
 import ApiError from '../utils/ApiError.js';
+import { normalizeUploadFilename } from '../utils/utf8.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../uploads/resumes');
 
@@ -20,6 +21,7 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024, files: 1 },
   fileFilter: (_req, file, done) => {
+    file.originalname = normalizeUploadFilename(file.originalname);
     const isPdf =
       file.mimetype === 'application/pdf' &&
       path.extname(file.originalname).toLowerCase() === '.pdf';
