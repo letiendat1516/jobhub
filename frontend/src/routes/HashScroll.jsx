@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigationType } from 'react-router-dom';
 
 /**
  * HashScroll — handles in-page anchor navigation for the homepage.
@@ -12,6 +12,7 @@ import { useLocation } from 'react-router-dom';
  */
 const HashScroll = () => {
   const { pathname, hash } = useLocation();
+  const navigationType = useNavigationType();
 
   useEffect(() => {
     if (hash) {
@@ -21,8 +22,11 @@ const HashScroll = () => {
         return;
       }
     }
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
-  }, [pathname, hash]);
+    // Let the destination page/browser restore its previous position on Back/Forward.
+    if (navigationType !== 'POP') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+    }
+  }, [pathname, hash, navigationType]);
 
   return null;
 };

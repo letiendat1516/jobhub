@@ -160,16 +160,61 @@ describe('Application API', () => {
     });
     repository.updateStatusAtomic.mockResolvedValue({
       application_id: 3,
-      status: 'UNDER_REVIEW',
+      status: 'ACCEPTED',
       history_id: 1,
     });
     const response = await request('/api/applications/employer/3/status', {
       method: 'PATCH',
       headers: { authorization: `Bearer ${token('employer', 7)}` },
-      body: JSON.stringify({ status: 'UNDER_REVIEW', expectedCurrentStatus: 'SUBMITTED' }),
+      body: JSON.stringify({ status: 'ACCEPTED', expectedCurrentStatus: 'SUBMITTED' }),
     });
     expect(response.status).toBe(200);
-    expect(repository.updateStatusAtomic).toHaveBeenCalledOnce();
+    expect(repository.updateStatusAtomic).toHaveBeenCalledWith({
+      applicationId: 3,
+      expectedStatus: 'SUBMITTED',
+      newStatus: 'ACCEPTED',
+      actorId: 7,
+      actorRole: 'employer',
+    });
+  });
+
+  it('rejects an invalid status before calling the repository', async () => {
+    const response = await request('/api/applications/employer/3/status', {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token('employer', 7)}` },
+      body: JSON.stringify({
+        status: 'Đã chấp nhận',
+        expectedCurrentStatus: 'SUBMITTED',
+      }),
+    });
+    expect(response.status).toBe(400);
+    expect(repository.updateStatusAtomic).not.toHaveBeenCalled();
+  });
+
+  it('blocks a cross-employer status update', async () => {
+    repository.findDetail.mockResolvedValue({
+      application_id: 3,
+      status: 'SUBMITTED',
+      job: { employer_id: 7 },
+    });
+    const response = await request('/api/applications/employer/3/status', {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token('employer', 8)}` },
+      body: JSON.stringify({ status: 'ACCEPTED', expectedCurrentStatus: 'SUBMITTED' }),
+    });
+    expect(response.status).toBe(403);
+    expect(repository.updateStatusAtomic).not.toHaveBeenCalled();
+  });
+
+  it('returns not found when updating an unknown application', async () => {
+    repository.findDetail.mockResolvedValue(null);
+    const response = await request('/api/applications/employer/999/status', {
+      method: 'PATCH',
+      headers: { authorization: `Bearer ${token('employer', 7)}` },
+      body: JSON.stringify({ status: 'ACCEPTED', expectedCurrentStatus: 'SUBMITTED' }),
+    });
+    expect(response.status).toBe(404);
+    expect(repository.updateStatusAtomic).not.toHaveBeenCalled();
   });
 
   it('allows an admin to review an application without employer ownership', async () => {

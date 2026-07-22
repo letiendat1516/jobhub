@@ -4,7 +4,7 @@ import { Routes, Route } from 'react-router-dom';
 import PublicLayout from '../layouts/PublicLayout.jsx';
 import HashScroll from './HashScroll.jsx';
 import RoleGuard from './RoleGuard.jsx';
-import ErrorBoundary from '../components/ErrorBoundary.jsx';
+import { RouteErrorBoundary as ErrorBoundary } from '../components/ErrorBoundary.jsx';
 
 /* ---------- Lazy-loaded pages (code-split per route) ---------- */
 const HomePage           = lazy(() => import('../pages/HomePage.jsx'));
