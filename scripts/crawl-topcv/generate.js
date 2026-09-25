@@ -10,6 +10,7 @@
  *       node generate.js --count=1000
  */
 import { writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   CATEGORIES,
   SALARY_RANGES,
@@ -260,10 +261,7 @@ function main() {
 
   // output
   const output = jobs;
-  const OUT = new URL("./data/jobs-raw.json", import.meta.url).pathname.replace(
-    /^\//,
-    "",
-  );
+  const OUT = fileURLToPath(new URL("./data/jobs-raw.json", import.meta.url));
   writeFileSync(OUT, JSON.stringify(output, null, 2));
 
   // ---- stats ----
