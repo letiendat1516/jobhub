@@ -77,6 +77,10 @@ export default function JobsPage() {
   );
   const [jobsLoading, setJobsLoading] = useState(true);
   const [jobsError, setJobsError] = useState('');
+  // Tổng số việc làm thật từ DB (meta.total) — lưu riêng để hiển thị ngay
+  // không phải chờ load hết toàn bộ jobs.
+  const [totalJobs, setTotalJobs] = useState(mockJobs.length);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   // Read initial search criteria from URL (?q=...&location=...) set by
   // the homepage SearchBar so results match what the user searched for.
@@ -104,29 +108,34 @@ export default function JobsPage() {
     let cancelled = false;
 
     const loadApprovedJobs = async () => {
+      // Backend cap = MAX_LIMIT (1000)/page. Chia 2 pha để hiển thị nhanh:
+      //   Phase 1 — load song song 3 trang đầu (~3000 job) → render ngay,
+      //             lưu meta.total (đếm bằng COUNT trên DB, rất nhanh) riêng.
+      //   Phase 2 — tải nốt các trang còn lại ở background (không chặn UI),
+      //             filter sidebar / AI matching dần đủ toàn bộ tập dữ liệu.
+      const LIMIT = 1000;
+      const INITIAL_PAGES = 3;
+      const apiJobs = [];
+      let firstBatches = null;
+
       try {
         setJobsLoading(true);
         setJobsError('');
 
-        // Fetch ALL approved jobs across pages. Filter sidebar counts,
-        // AI matching và sort đều chạy client-side trên toàn bộ tập — nếu
-        // chỉ load 1 page thì user không thấy đủ job (vd 9850 job đã seed).
-        // Backend cap = MAX_LIMIT (1000) — dừng khi 1 page trả < LIMIT.
-        const LIMIT = 1000;
-        const allApiJobs = [];
-        let p = 1;
-        for (;;) {
-          const batch = await jobService.searchJobs({ page: p, limit: LIMIT });
-          if (!Array.isArray(batch) || batch.length === 0) break;
-          allApiJobs.push(...batch);
-          if (batch.length < LIMIT) break; // trang cuối
-          p += 1;
-          if (p > 50) break; // safety cap (~50k job)
+        firstBatches = await Promise.all(
+          Array.from({ length: INITIAL_PAGES }, (_, i) =>
+            jobService.searchJobs({ page: i + 1, limit: LIMIT }),
+          ),
+        );
+        if (cancelled) return;
+
+        for (const batch of firstBatches) {
+          if (Array.isArray(batch.items)) apiJobs.push(...batch.items);
         }
 
-        if (!cancelled) {
-          setJobs(mergeJobs(mockJobs, allApiJobs));
-        }
+        // Lưu tổng số việc làm từ DB — hiển thị lập tức.
+        setTotalJobs(firstBatches[0]?.meta?.total ?? apiJobs.length);
+        setJobs(mergeJobs(mockJobs, apiJobs));
       } catch (err) {
         if (!cancelled) {
           setJobsError(
@@ -142,11 +151,31 @@ export default function JobsPage() {
             })),
           );
         }
+        return;
       } finally {
         if (!cancelled) {
           setJobsLoading(false);
         }
       }
+
+      // ---- Phase 2: background load các trang còn lại (không chặn UI) ----
+      const total = firstBatches?.[0]?.meta?.total ?? apiJobs.length;
+      if (!firstBatches || apiJobs.length >= total) return; // đã đủ / lỗi phase 1
+
+      setLoadingMore(true);
+      const totalPages = Math.ceil(total / LIMIT);
+      for (let p = INITIAL_PAGES + 1; p <= totalPages && p <= 50; p += 1) {
+        if (cancelled) break;
+        try {
+          const { items: batch } = await jobService.searchJobs({ page: p, limit: LIMIT });
+          if (!Array.isArray(batch) || batch.length === 0) break;
+          apiJobs.push(...batch);
+          if (!cancelled) setJobs(mergeJobs(mockJobs, apiJobs));
+        } catch {
+          break; // lỗi mạng — giữ những gì đã load được
+        }
+      }
+      if (!cancelled) setLoadingMore(false);
     };
 
     loadApprovedJobs();
@@ -215,6 +244,14 @@ export default function JobsPage() {
 
   // ---- pagination ----
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
+
+  // Hiển thị tổng số việc làm: dùng con số thật từ DB (meta.total, lưu riêng)
+  // khi chưa áp filter — hiện luôn không phải chờ load hết. Khi đang
+  // search/filter thì dùng số job đã lọc thực tế.
+  const hasFilterContext =
+    Boolean(keyword.trim() || locationQuery.trim()) ||
+    Object.values(filters).some((arr) => Array.isArray(arr) && arr.length > 0);
+  const displayTotal = hasFilterContext ? filtered.length : totalJobs;
   const current = Math.min(page, totalPages || 1);
   const pageJobs = filtered.slice((current - 1) * PAGE_SIZE, current * PAGE_SIZE);
 
@@ -265,7 +302,10 @@ export default function JobsPage() {
           <h1 className="text-2xl font-bold text-ink sm:text-3xl">
             Tìm việc làm
             <span className="ml-2 text-base font-normal text-ink-muted">
-              {filtered.length} việc làm
+              {displayTotal.toLocaleString('vi-VN')} việc làm
+              {loadingMore && !jobsLoading && (
+                <span className="ml-1">· đang tải thêm…</span>
+              )}
             </span>
           </h1>
 

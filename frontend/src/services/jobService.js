@@ -9,7 +9,7 @@ const getData = (response, fallback = null) => response?.data ?? fallback;
 const jobService = {
   searchJobs: async (filters = {}) => {
     const response = await apiClient.get('/jobs', { params: filters });
-    return getData(response, []);
+    return { items: getData(response, []), meta: response?.meta ?? null };
   },
 
   getJobById: async (id) => {
